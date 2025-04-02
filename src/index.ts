@@ -8,6 +8,8 @@ import { version, name } from "../package.json";
 import { getVideo } from "./features/video";
 const environment = process.env.NODE_ENV;
 
+import * as Sentry from "@sentry/bun";
+
 // Check required environment variables
 const requiredVars = [
 	"SLACK_BOT_TOKEN",
@@ -15,6 +17,7 @@ const requiredVars = [
 	"SLACK_REVIEW_CHANNEL",
 	"SLACK_USER_TOKEN",
 	"API_URL",
+	"SENTRY_DSN",
 ] as const;
 const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
@@ -23,6 +26,10 @@ if (missingVars.length > 0) {
 		`Missing required environment variables: ${missingVars.join(", ")}`,
 	);
 }
+
+Sentry.init({
+	dsn: process.env.SENTRY_DSN,
+});
 
 console.log(
 	`----------------------------------\n${name} Server\n----------------------------------\n`,

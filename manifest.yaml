@@ -17,6 +17,8 @@ features:
           should_escape: true
 oauth_config:
     scopes:
+        user:
+            - files:write
         bot:
             - chat:write
             - chat:write.public
