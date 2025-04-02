@@ -1,0 +1,12 @@
+app:
+    startup:
+        - "Remember friends, only YOU can prevent server outages! :bear: The environment *${environment}* is safe and secure! :evergreen_tree:"
+        - "Howdy campers! Your friendly forest guardian here, keeping watch over environment *${environment}*! :camping:"
+        - "Time to pitch our tents in *${environment}*! All systems operational! :tent:"
+        - "Trail status for *${environment}*: Clear skies ahead! :sunny:"
+        - "Forest ranger checking in! *${environment}* is looking mighty fine today! :mountain:"
+        - "The campfire is lit and *${environment}* is warming up nicely! :fire:"
+        - "Happy trails! Your *${environment}* environment is ready for adventure! :hiking_boot:"
+        - "Welcome to *${environment}* National Park! All systems are go! :national_park:"
+        - "Ranger station report: *${environment}* is operating at peak performance! :mountain_snow:"
+        - "Good morning from the wilderness of *${environment}*! Everything's running smoothly! :sunrise_over_mountains:"
