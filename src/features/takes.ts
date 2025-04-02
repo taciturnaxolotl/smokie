@@ -466,8 +466,10 @@ const takes = async () => {
 				(pausedSession.pausedTimeMs || 0),
 		);
 
+		const timeRemaining = endTime.getTime() - now.getTime();
+
 		return {
-			text: `▶️ Takes session resumed! You have ${prettyPrintTime(pausedSession.durationMinutes * 60000)} remaining in your session.`,
+			text: `▶️ Takes session resumed! You have ${prettyPrintTime(timeRemaining)} remaining in your session.`,
 			response_type: "ephemeral",
 			blocks: [
 				{
@@ -485,7 +487,7 @@ const takes = async () => {
 					elements: [
 						{
 							type: "mrkdwn",
-							text: `You have ${prettyPrintTime(pausedSession.durationMinutes * 60000)} remaining until ${generateSlackDate(endTime)}.`,
+							text: `You have ${prettyPrintTime(timeRemaining)} remaining until ${generateSlackDate(endTime)}.`,
 						},
 					],
 				},
