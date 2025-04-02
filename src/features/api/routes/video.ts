@@ -1,8 +1,8 @@
-import { db } from "../libs/db";
-import { takes as takesTable } from "../libs/schema";
+import { db } from "../../../libs/db";
+import { takes as takesTable } from "../../../libs/schema";
 import { eq, and } from "drizzle-orm";
 
-export async function getVideo(url: URL): Promise<Response> {
+export default async function getVideo(url: URL): Promise<Response> {
 	const videoId = url.pathname.split("/")[2];
 
 	if (!videoId) {

@@ -1,10 +1,10 @@
-import { slackApp, slackClient } from "../index";
-import { db } from "../libs/db";
-import { takes as takesTable } from "../libs/schema";
+import { slackApp, slackClient } from "../../../index";
+import { db } from "../../../libs/db";
+import { takes as takesTable } from "../../../libs/schema";
 import { eq, and } from "drizzle-orm";
-import { prettyPrintTime } from "../libs/time";
+import { prettyPrintTime } from "../../../libs/time";
 
-const upload = async () => {
+export default async function upload() {
 	slackApp.anyMessage(async ({ payload }) => {
 		try {
 			if (payload.subtype !== "file_share") return;
@@ -292,6 +292,4 @@ const upload = async () => {
 				delete_original: true,
 			});
 	});
-};
-
-export default upload;
+}

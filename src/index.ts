@@ -5,7 +5,7 @@ import * as features from "./features/index";
 import { t } from "./libs/template";
 import { blog } from "./libs/Logger";
 import { version, name } from "../package.json";
-import { getVideo } from "./features/video";
+import { video } from "./features/api";
 const environment = process.env.NODE_ENV;
 
 import * as Sentry from "@sentry/bun";
@@ -36,7 +36,7 @@ Sentry.init({
 console.log(
 	`----------------------------------\n${name} Server\n----------------------------------\n`,
 );
-console.log(`🏗️  Starting ${name}...`);
+console.log(`🏗️ Starting ${name}...`);
 console.log("📦 Loading Slack App...");
 console.log("🔑 Loading environment variables...");
 
@@ -50,7 +50,7 @@ const slackApp = new SlackApp({
 });
 const slackClient = slackApp.client;
 
-console.log(`⚒️  Loading ${Object.entries(features).length} features...`);
+console.log(`⚒️ Loading ${Object.entries(features).length} features...`);
 for (const [feature, handler] of Object.entries(features)) {
 	console.log(`📦 ${feature} loaded`);
 	if (typeof handler === "function") {
@@ -72,7 +72,7 @@ export default {
 			case "/slack":
 				return slackApp.run(request);
 			case "/video":
-				return getVideo(url);
+				return video(url);
 			default:
 				return new Response("404 Not Found", { status: 404 });
 		}

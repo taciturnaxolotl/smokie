@@ -26,9 +26,10 @@ oauth_config:
             - chat:write.public
             - commands
             - im:history
-            - users:read
-            - reactions:write
             - links:read
+            - reactions:write
+            - users:read
+            - links.embed:write
 settings:
     event_subscriptions:
         request_url: https://casual-renewing-reptile.ngrok-free.app/slack
