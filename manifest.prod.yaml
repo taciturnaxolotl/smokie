@@ -1,0 +1,43 @@
+display_information:
+    name: Smokey
+    description: Only you can complete your takes
+    background_color: "#617c68"
+features:
+    app_home:
+        home_tab_enabled: false
+        messages_tab_enabled: true
+        messages_tab_read_only_enabled: false
+    bot_user:
+        display_name: smokey
+        always_online: false
+    slash_commands:
+        - command: /takes
+          url: https://takes.dunkirk.sh/slack
+          description: Start a takes session
+          should_escape: true
+    unfurl_domains:
+        - takes.dunkirk.sh
+oauth_config:
+    scopes:
+        user:
+            - files:write
+        bot:
+            - chat:write
+            - chat:write.public
+            - commands
+            - im:history
+            - users:read
+            - reactions:write
+            - links:read
+settings:
+    event_subscriptions:
+        request_url: https://takes.dunkirk.sh/slack
+        bot_events:
+            - link_shared
+            - message.im
+    interactivity:
+        is_enabled: true
+        request_url: https://takes.dunkirk.sh/slack
+    org_deploy_enabled: false
+    socket_mode_enabled: false
+    token_rotation_enabled: false

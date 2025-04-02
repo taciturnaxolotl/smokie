@@ -1,20 +1,22 @@
 display_information:
-    name: Smokey
+    name: Smokey Dev
     description: Only you can complete your takes
-    background_color: "#617c68"
+    background_color: "#ce37ba"
 features:
     app_home:
         home_tab_enabled: false
         messages_tab_enabled: true
         messages_tab_read_only_enabled: false
     bot_user:
-        display_name: smokey
+        display_name: smokey dev
         always_online: false
     slash_commands:
-        - command: /takes
+        - command: /takes-dev
           url: https://casual-renewing-reptile.ngrok-free.app/slack
           description: Start a takes session
           should_escape: true
+    unfurl_domains:
+        - casual-renewing-reptile.ngrok-free.app
 oauth_config:
     scopes:
         user:
@@ -26,10 +28,12 @@ oauth_config:
             - im:history
             - users:read
             - reactions:write
+            - links:read
 settings:
     event_subscriptions:
         request_url: https://casual-renewing-reptile.ngrok-free.app/slack
         bot_events:
+            - link_shared
             - message.im
     interactivity:
         is_enabled: true
