@@ -2,7 +2,7 @@ import { SlackApp } from "slack-edge";
 
 import * as features from "./features/index";
 
-import { t, t_fetch } from "./libs/template";
+import { t } from "./libs/template";
 import { blog } from "./libs/Logger";
 import { version, name } from "../package.json";
 import { getVideo } from "./features/video";
@@ -29,6 +29,8 @@ if (missingVars.length > 0) {
 
 Sentry.init({
 	dsn: process.env.SENTRY_DSN,
+	environment,
+	release: version,
 });
 
 console.log(
