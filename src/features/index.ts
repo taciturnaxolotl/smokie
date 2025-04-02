@@ -1,2 +1,2 @@
-export { default as example } from "./example";
+export { default as upload } from "./upload";
 export { default as takes } from "./takes";

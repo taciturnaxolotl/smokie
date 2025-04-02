@@ -1,5 +1,5 @@
 import type { AnyMessageBlock } from "slack-edge";
-import { slackApp } from "../index";
+import { slackApp, slackClient } from "../index";
 import { db } from "../libs/db";
 import { takes as takesTable } from "../libs/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -102,29 +102,32 @@ const takes = async () => {
 
 				// Auto-expire paused sessions that exceed the max pause duration
 				if (pausedDuration > TakesConfig.MAX_PAUSE_DURATION) {
-					await db
-						.update(takesTable)
-						.set({
-							status: "completed",
-							completedAt: now,
-							notes: take.notes
-								? `${take.notes} (Automatically completed due to pause timeout)`
-								: "Automatically completed due to pause timeout",
-						})
-						.where(eq(takesTable.id, take.id));
-
+					let ts: string | undefined;
 					// Notify user that their session was auto-completed
 					try {
-						await slackApp.client.chat.postMessage({
+						const res = await slackApp.client.chat.postMessage({
 							channel: take.userId,
-							text: `⏰ Your paused takes session has been automatically completed because it was paused for more than ${TakesConfig.MAX_PAUSE_DURATION} minutes.`,
+							text: `⏰ Your paused takes session has been automatically completed because it was paused for more than ${TakesConfig.MAX_PAUSE_DURATION} minutes.\n\nPlease upload your takes video in this thread within the next 24 hours!`,
 						});
+						ts = res.ts;
 					} catch (error) {
 						console.error(
 							"Failed to notify user of auto-completed session:",
 							error,
 						);
 					}
+
+					await db
+						.update(takesTable)
+						.set({
+							status: "waitingUpload",
+							completedAt: now,
+							ts,
+							notes: take.notes
+								? `${take.notes} (Automatically completed due to pause timeout)`
+								: "Automatically completed due to pause timeout",
+						})
+						.where(eq(takesTable.id, take.id));
 				}
 			}
 		}
@@ -172,28 +175,32 @@ const takes = async () => {
 			}
 
 			if (remainingMs <= 0) {
-				await db
-					.update(takesTable)
-					.set({
-						status: "completed",
-						completedAt: now,
-						notes: take.notes
-							? `${take.notes} (Automatically completed - time expired)`
-							: "Automatically completed - time expired",
-					})
-					.where(eq(takesTable.id, take.id));
-
+				let ts: string | undefined;
 				try {
-					await slackApp.client.chat.postMessage({
+					const res = await slackApp.client.chat.postMessage({
 						channel: take.userId,
-						text: "⏰ Your takes session has automatically completed because the time is up.",
+						text: "⏰ Your takes session has automatically completed because the time is up. Please upload your takes video in this thread within the next 24 hours!",
 					});
+
+					ts = res.ts;
 				} catch (error) {
 					console.error(
 						"Failed to notify user of completed session:",
 						error,
 					);
 				}
+
+				await db
+					.update(takesTable)
+					.set({
+						status: "waitingUpload",
+						completedAt: now,
+						ts,
+						notes: take.notes
+							? `${take.notes} (Automatically completed - time expired)`
+							: "Automatically completed - time expired",
+					})
+					.where(eq(takesTable.id, take.id));
 			}
 		}
 	};
@@ -560,10 +567,16 @@ const takes = async () => {
 				notes = args.slice(1).join(" ");
 			}
 
+			const res = await slackClient.chat.postMessage({
+				channel: userId,
+				text: "🎬 Your paused takes session has been completed. Please upload your takes video in this thread within the next 24 hours!",
+			});
+
 			await db
 				.update(takesTable)
 				.set({
-					status: "completed",
+					status: "waitingUpload",
+					ts: res.ts,
 					completedAt: new Date(),
 					...(notes && { notes }),
 				})
@@ -581,10 +594,16 @@ const takes = async () => {
 				notes = args.slice(1).join(" ");
 			}
 
+			const res = await slackClient.chat.postMessage({
+				channel: userId,
+				text: "🎬 Your takes session has been completed. Please upload your takes video in this thread within the next 24 hours!",
+			});
+
 			await db
 				.update(takesTable)
 				.set({
-					status: "completed",
+					status: "waitingUpload",
+					ts: res.ts,
 					completedAt: new Date(),
 					...(notes && { notes }),
 				})

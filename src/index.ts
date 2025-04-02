@@ -5,10 +5,17 @@ import * as features from "./features/index";
 import { t, t_fetch } from "./libs/template";
 import { blog } from "./libs/Logger";
 import { version, name } from "../package.json";
+import { getVideo } from "./features/video";
 const environment = process.env.NODE_ENV;
 
 // Check required environment variables
-const requiredVars = ["SLACK_BOT_TOKEN", "SLACK_SIGNING_SECRET"] as const;
+const requiredVars = [
+	"SLACK_BOT_TOKEN",
+	"SLACK_SIGNING_SECRET",
+	"SLACK_REVIEW_CHANNEL",
+	"SLACK_USER_TOKEN",
+	"API_URL",
+] as const;
 const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
 if (missingVars.length > 0) {
@@ -46,7 +53,7 @@ export default {
 	port: process.env.PORT || 3000,
 	async fetch(request: Request) {
 		const url = new URL(request.url);
-		const path = url.pathname;
+		const path = `/${url.pathname.split("/")[1]}`;
 
 		switch (path) {
 			case "/":
@@ -55,6 +62,8 @@ export default {
 				return new Response("OK");
 			case "/slack":
 				return slackApp.run(request);
+			case "/video":
+				return getVideo(url);
 			default:
 				return new Response("404 Not Found", { status: 404 });
 		}

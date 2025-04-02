@@ -2,7 +2,7 @@
 
 export const TakesConfig = {
 	// Default takes session length in minutes (should be 90 for production)
-	DEFAULT_SESSION_LENGTH: 2,
+	DEFAULT_SESSION_LENGTH: 5,
 
 	// Maximum time in minutes that a takes session can be paused before automatic expiration
 	MAX_PAUSE_DURATION: 3,

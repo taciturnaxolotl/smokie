@@ -18,11 +18,17 @@ features:
 oauth_config:
     scopes:
         bot:
-            - commands
-            - users:read
-            - chat:write.public
             - chat:write
+            - chat:write.public
+            - commands
+            - im:history
+            - users:read
+            - reactions:write
 settings:
+    event_subscriptions:
+        request_url: https://casual-renewing-reptile.ngrok-free.app/slack
+        bot_events:
+            - message.im
     interactivity:
         is_enabled: true
         request_url: https://casual-renewing-reptile.ngrok-free.app/slack
