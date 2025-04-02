@@ -22,6 +22,20 @@ you will also need to launch an ngrok tunnel and update your dev slack manifest 
 bun ngrok
 ```
 
+you also need to create a `.env` file with the following keys
+
+```bash
+SLACK_BOT_TOKEN="xoxb-xxxxx-xxxxx-xxxxx-xxxxx"
+SLACK_SIGNING_SECRET="xxxxx"
+SLACK_SPAM_CHANNEL="C069N64PW4A"
+SLACK_LOG_CHANNEL="C08KX2YNN87"
+SLACK_REVIEW_CHANNEL="C07P0CXT08H"
+NODE_ENV="dev"
+SLACK_USER_TOKEN="xoxp-xxxxx-xxxxx-xxxxx-xxxxx"
+API_URL="https://casual-renewing-reptile.ngrok-free.app"
+SENTRY_DSN="https://xxxxxx@xxxxxx.ingest.us.sentry.io/xxxx"
+```
+
 ## 📜 License
 
 The code is licensed under `AGPL 3.0`! That means AGPL 3.0 requires publishing source code changes when the software is used over a network, guaranteeing that users can access the code. All artwork and images are copyright reserved but may be used with proper attribution to the authors.
