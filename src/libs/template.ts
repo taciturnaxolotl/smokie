@@ -52,5 +52,5 @@ export function randomChoice<T>(arr: T[]): T {
 	if (arr.length === 0) {
 		throw new Error("Cannot get random choice from empty array");
 	}
-	return arr[Math.floor(Math.random() * arr.length)]!;
+	return arr[Math.floor(Math.random() * arr.length)] as T;
 }

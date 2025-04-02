@@ -26,8 +26,8 @@ console.log("🔑 Loading environment variables...");
 
 const slackApp = new SlackApp({
 	env: {
-		SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN!,
-		SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET!,
+		SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN as string,
+		SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET as string,
 		SLACK_LOGGING_LEVEL: "INFO",
 	},
 	startLazyListenerAfterAck: true,
