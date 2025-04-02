@@ -4,6 +4,7 @@ import { db } from "../libs/db";
 import { takes as takesTable } from "../libs/schema";
 import { eq, and, desc } from "drizzle-orm";
 import TakesConfig from "../libs/config";
+import { generateSlackDate, prettyPrintTime } from "../libs/time";
 
 type MessageResponse = {
 	blocks?: AnyMessageBlock[];
@@ -12,16 +13,6 @@ type MessageResponse = {
 };
 
 const takes = async () => {
-	// Helper function for pretty-printing time
-	const prettyPrintTime = (ms: number): string => {
-		const minutes = Math.round(ms / 60000);
-		if (minutes < 2) {
-			const seconds = Math.max(0, Math.round(ms / 1000));
-			return `${seconds} seconds`;
-		}
-		return `${minutes} minutes`;
-	};
-
 	// Helper functions for command actions
 	const getActiveTake = async (userId: string) => {
 		return db
@@ -242,13 +233,12 @@ const takes = async () => {
 		const endTime = new Date(
 			newTake.startedAt.getTime() + newTake.durationMinutes * 60000,
 		);
-		const endTimeStr = `<!date^${Math.floor(endTime.getTime() / 1000)}^{time}|${endTime.toLocaleTimeString()}>`;
 
 		const descriptionText = description
 			? `\n\n*Working on:* ${description}`
 			: "";
 		return {
-			text: `🎬 Takes session started! You have ${prettyPrintTime(newTake.durationMinutes * 60000)} until ${endTimeStr}.${descriptionText}`,
+			text: `🎬 Takes session started! You have ${prettyPrintTime(newTake.durationMinutes * 60000)} until ${generateSlackDate(endTime)}.${descriptionText}`,
 			response_type: "ephemeral",
 			blocks: [
 				{
@@ -266,7 +256,7 @@ const takes = async () => {
 					elements: [
 						{
 							type: "mrkdwn",
-							text: `You have ${prettyPrintTime(newTake.durationMinutes * 60000)} left until ${endTimeStr}.`,
+							text: `You have ${prettyPrintTime(newTake.durationMinutes * 60000)} left until ${generateSlackDate(endTime)}.`,
 						},
 					],
 				},
@@ -468,7 +458,6 @@ const takes = async () => {
 				pausedSession.durationMinutes * 60000 +
 				(pausedSession.pausedTimeMs || 0),
 		);
-		const endTimeStr = `<!date^${Math.floor(endTime.getTime() / 1000)}^{time}|${endTime.toLocaleTimeString()}>`;
 
 		return {
 			text: `▶️ Takes session resumed! You have ${prettyPrintTime(pausedSession.durationMinutes * 60000)} remaining in your session.`,
@@ -489,7 +478,7 @@ const takes = async () => {
 					elements: [
 						{
 							type: "mrkdwn",
-							text: `You have ${prettyPrintTime(pausedSession.durationMinutes * 60000)} remaining until ${endTimeStr}.`,
+							text: `You have ${prettyPrintTime(pausedSession.durationMinutes * 60000)} remaining until ${generateSlackDate(endTime)}.`,
 						},
 					],
 				},
@@ -666,8 +655,6 @@ const takes = async () => {
 				endTime.setTime(endTime.getTime() + take.pausedTimeMs);
 			}
 
-			const endTimeStr = `<!date^${Math.floor(endTime.getTime() / 1000)}^{time}|${endTime.toLocaleTimeString()}>`;
-
 			const now = new Date();
 			const remainingMs = endTime.getTime() - now.getTime();
 
@@ -695,7 +682,7 @@ const takes = async () => {
 						elements: [
 							{
 								type: "mrkdwn",
-								text: `You have ${prettyPrintTime(remainingMs)} remaining until ${endTimeStr}.`,
+								text: `You have ${prettyPrintTime(remainingMs)} remaining until ${generateSlackDate(endTime)}.`,
 							},
 						],
 					},
