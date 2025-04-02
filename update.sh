@@ -1,3 +1,4 @@
+git restore bun.lock
 git pull
 bun install
 bun db:generate
