@@ -1,8 +1,8 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 
-export default async function recentTakes(): Promise<Response> {
+export async function recentTakes(): Promise<Response> {
 	const recentTakes = await db
 		.select()
 		.from(takesTable)
@@ -35,6 +35,71 @@ export default async function recentTakes(): Promise<Response> {
 
 	return new Response(
 		JSON.stringify({
+			takes,
+		}),
+		{
+			headers: {
+				"Content-Type": "application/json",
+			},
+		},
+	);
+}
+
+export async function takesPerUser(userId: string): Promise<Response> {
+	const rawTakes = await db
+		.select()
+		.from(takesTable)
+		.where(and(eq(takesTable.userId, userId)))
+		.orderBy(desc(takesTable.completedAt));
+
+	const takes = rawTakes.map((take) => ({
+		id: take.id,
+		description: take.description,
+		completedAt: take.completedAt,
+		status: take.status,
+		mp4Url: take.takeUrl,
+		elapsedTime: take.elapsedTimeMs,
+	}));
+
+	const approvedTakes = rawTakes.reduce((acc, take) => {
+		if (take.status !== "approved") return acc;
+		const multiplier = Number.parseFloat(take.multiplier || "1.0");
+		return Number(
+			(
+				acc +
+				(take.elapsedTimeMs * multiplier) / (1000 * 60 * 60)
+			).toFixed(1),
+		);
+	}, 0);
+
+	const waitingTakes = rawTakes.reduce((acc, take) => {
+		if (take.status !== "waitingUpload" && take.status !== "uploaded")
+			return acc;
+		const multiplier = Number.parseFloat(take.multiplier || "1.0");
+		return Number(
+			(
+				acc +
+				(take.elapsedTimeMs * multiplier) / (1000 * 60 * 60)
+			).toFixed(1),
+		);
+	}, 0);
+
+	const rejectedTakes = rawTakes.reduce((acc, take) => {
+		if (take.status !== "rejected") return acc;
+		const multiplier = Number.parseFloat(take.multiplier || "1.0");
+		return Number(
+			(
+				acc +
+				(take.elapsedTimeMs * multiplier) / (1000 * 60 * 60)
+			).toFixed(1),
+		);
+	}, 0);
+
+	return new Response(
+		JSON.stringify({
+			approvedTakes,
+			waitingTakes,
+			rejectedTakes,
 			takes,
 		}),
 		{
