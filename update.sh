@@ -1,5 +1,6 @@
 git restore bun.lock
-git pull
+git fetch --all
+git reset --hard origin/main
 bun install
 bun db:generate
 bun db:push
