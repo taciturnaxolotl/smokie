@@ -8,6 +8,7 @@ import {
 	getPausedDuration,
 	getRemainingTime,
 } from "../../../libs/time-periods";
+import { prettyPrintTime } from "../../../libs/time";
 
 // Check for paused sessions that have exceeded the max pause duration
 export async function expirePausedSessions() {
@@ -52,6 +53,9 @@ export async function expirePausedSessions() {
 			}
 		}
 
+		// Calculate elapsed time
+		const elapsedTime = calculateElapsedTime(JSON.parse(take.periods));
+
 		// Auto-expire paused sessions that exceed the max pause duration
 		if (pausedDuration > TakesConfig.MAX_PAUSE_DURATION) {
 			let ts: string | undefined;
@@ -60,6 +64,27 @@ export async function expirePausedSessions() {
 				const res = await slackApp.client.chat.postMessage({
 					channel: take.userId,
 					text: `⏰ Your paused takes session has been automatically completed because it was paused for more than ${TakesConfig.MAX_PAUSE_DURATION} minutes.\n\nPlease upload your takes video in this thread within the next 24 hours!`,
+					blocks: [
+						{
+							type: "section",
+							text: {
+								type: "mrkdwn",
+								text: `⏰ Your paused takes session has been automatically completed because it was paused for more than ${TakesConfig.MAX_PAUSE_DURATION} minutes.\n\nPlease upload your takes video in this thread within the next 24 hours!`,
+							},
+						},
+						{
+							type: "divider",
+						},
+						{
+							type: "context",
+							elements: [
+								{
+									type: "mrkdwn",
+									text: `\`${prettyPrintTime(elapsedTime)}\`${take.description ? ` working on: *${take.description}*` : ""}`,
+								},
+							],
+						},
+					],
 				});
 				ts = res.ts;
 			} catch (error) {
@@ -68,9 +93,6 @@ export async function expirePausedSessions() {
 					error,
 				);
 			}
-
-			// Calculate elapsed time
-			const elapsedTime = calculateElapsedTime(JSON.parse(take.periods));
 
 			await db
 				.update(takesTable)
@@ -123,12 +145,35 @@ export async function checkActiveSessions() {
 			}
 		}
 
+		const elapsedTime = calculateElapsedTime(JSON.parse(take.periods));
+
 		if (endTime.remaining <= 0) {
 			let ts: string | undefined;
 			try {
 				const res = await slackApp.client.chat.postMessage({
 					channel: take.userId,
 					text: "⏰ Your takes session has automatically completed because the time is up. Please upload your takes video in this thread within the next 24 hours!",
+					blocks: [
+						{
+							type: "section",
+							text: {
+								type: "mrkdwn",
+								text: "⏰ Your takes session has automatically completed because the time is up. Please upload your takes video in this thread within the next 24 hours!",
+							},
+						},
+						{
+							type: "divider",
+						},
+						{
+							type: "context",
+							elements: [
+								{
+									type: "mrkdwn",
+									text: `\`${prettyPrintTime(elapsedTime)}\`${take.description ? ` working on: *${take.description}*` : ""}`,
+								},
+							],
+						},
+					],
 				});
 
 				ts = res.ts;
@@ -139,14 +184,12 @@ export async function checkActiveSessions() {
 				);
 			}
 
-			const elapsedTime = calculateElapsedTime(JSON.parse(take.periods));
-
 			await db
 				.update(takesTable)
 				.set({
 					status: "waitingUpload",
 					completedAt: now,
-					elapsedTimeMs: take.targetDurationMs,
+					elapsedTimeMs: elapsedTime,
 					ts,
 					notes: take.notes
 						? `${take.notes} (Automatically completed - time expired)`

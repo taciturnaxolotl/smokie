@@ -58,7 +58,7 @@ export default async function handleStop(
 					elements: [
 						{
 							type: "mrkdwn",
-							text: `*Duration:* ${prettyPrintTime(elapsed)} ${notes ? `\n*Notes:* ${notes}` : ""}`,
+							text: `*Elapsed Time:* \`${prettyPrintTime(elapsed)}\`${pausedTakeToStop.description ? ` working on: *${pausedTakeToStop.description}*` : ""}`,
 						},
 					],
 				},
@@ -111,7 +111,7 @@ export default async function handleStop(
 					elements: [
 						{
 							type: "mrkdwn",
-							text: `*Duration:* ${prettyPrintTime(elapsed)} ${notes ? `\n*Notes:* ${notes}` : ""}`,
+							text: `\`${prettyPrintTime(elapsed)}\`${activeTakeToStop.description ? ` Working on: *${activeTakeToStop.description}*` : ""}`,
 						},
 					],
 				},

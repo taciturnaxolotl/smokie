@@ -76,8 +76,6 @@ export default async function upload() {
 				name: "fire",
 			});
 
-			const takeDuration = calculateElapsedTime(JSON.parse(take.periods));
-
 			await slackClient.chat.postMessage({
 				channel: payload.channel,
 				thread_ts: payload.thread_ts,
@@ -98,7 +96,7 @@ export default async function upload() {
 						elements: [
 							{
 								type: "mrkdwn",
-								text: `take by <@${user}> for \`${prettyPrintTime(takeDuration)}\` working on: *${take.description}*`,
+								text: `take by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.description}*`,
 							},
 						],
 					},
@@ -113,7 +111,7 @@ export default async function upload() {
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: `:video_camera: new take uploaded by <@${user}> for \`${prettyPrintTime(takeDuration)}\` working on: *${take.description}*`,
+							text: `:video_camera: new take uploaded by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.description}*`,
 						},
 					},
 					{
@@ -218,7 +216,7 @@ export default async function upload() {
 						elements: [
 							{
 								type: "mrkdwn",
-								text: `take by <@${user}> for \`${prettyPrintTime(takeDuration)}\` working on: *${take.description}*`,
+								text: `take by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.description}*`,
 							},
 						],
 					},
@@ -244,6 +242,9 @@ export default async function upload() {
 		if (take.length === 0) {
 			return;
 		}
+		const takeToApprove = take[0];
+		if (!takeToApprove) return;
+
 		await db
 			.update(takesTable)
 			.set({
@@ -252,14 +253,10 @@ export default async function upload() {
 			})
 			.where(eq(takesTable.id, takeId));
 
-		const takeDuration = calculateElapsedTime(
-			JSON.parse(take[0]?.periods as string),
-		);
-
 		await slackClient.chat.postMessage({
 			channel: payload.user.id,
 			thread_ts: take[0]?.ts as string,
-			text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeDuration * Number(multiplier)) / 60).toFixed(1)} takes*!`,
+			text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeToApprove.elapsedTimeMs * Number(multiplier)) / 60).toFixed(1)} takes*!`,
 		});
 
 		// delete the message from the review channel
