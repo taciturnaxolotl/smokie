@@ -5,8 +5,9 @@ import { eq, and } from "drizzle-orm";
 
 export default async function getVideo(url: URL): Promise<Response> {
 	try {
-		const videoId = url.pathname.split("/")[2];
-		const thumbnail = url.pathname.split("/")[3] === "thumbnail";
+		const path = url.pathname.split("/").filter(Boolean);
+		const videoId = path[2];
+		const thumbnail = path[3] === "thumbnail";
 
 		if (!videoId) {
 			return new Response(JSON.stringify({ error: "Invalid video id" }), {

@@ -13,6 +13,8 @@ export default async function upload() {
 
 			if (!user) return;
 
+			if (!payload.channel.startsWith("D")) return;
+
 			const takesNeedUpload = await db
 				.select()
 				.from(takesTable)
