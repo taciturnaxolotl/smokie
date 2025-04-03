@@ -43,6 +43,10 @@ export default async function handleResume(
 		pausedSession.periods,
 	);
 
+	const descriptionText = pausedSession.description
+		? `\n\n*Working on:* ${pausedSession.description}`
+		: "";
+
 	return {
 		text: `▶️ Takes session resumed! You have ${prettyPrintTime(endTime.remaining)} remaining in your session.`,
 		response_type: "ephemeral",
@@ -51,7 +55,7 @@ export default async function handleResume(
 				type: "section",
 				text: {
 					type: "mrkdwn",
-					text: "▶️ Takes session resumed!",
+					text: `▶️ Takes session resumed!${descriptionText}`,
 				},
 			},
 			{

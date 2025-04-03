@@ -124,8 +124,8 @@ export default async function handleStatus(
 		const pauseExpires = getPausedTimeRemaining(pausedTake.periods);
 
 		// Add notes to display if present
-		const noteText = pausedTake.notes
-			? `\n\n*Working on:* ${pausedTake.notes}`
+		const descriptionText = pausedTake.description
+			? `\n\n*Working on:* ${pausedTake.description}`
 			: "";
 
 		return {
@@ -136,7 +136,7 @@ export default async function handleStatus(
 					type: "section",
 					text: {
 						type: "mrkdwn",
-						text: `⏸️ Session paused! You have ${prettyPrintTime(endTime.remaining)} remaining.`,
+						text: `⏸️ Session paused! You have ${prettyPrintTime(endTime.remaining)} remaining.${descriptionText}`,
 					},
 				},
 				{

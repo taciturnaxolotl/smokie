@@ -8,6 +8,7 @@ import { generateSlackDate, prettyPrintTime } from "../../../libs/time";
 import {
 	addNewPeriod,
 	getPausedTimeRemaining,
+	getRemainingTime,
 } from "../../../libs/time-periods";
 
 export default async function handlePause(
@@ -31,8 +32,12 @@ export default async function handlePause(
 	);
 
 	const pausedTime = getPausedTimeRemaining(newPeriods);
+	const endTime = getRemainingTime(
+		takeToUpdate.targetDurationMs,
+		takeToUpdate.periods,
+	);
 
-	if (pausedTime > TakesConfig.MAX_PAUSE_DURATION) {
+	if (pausedTime > TakesConfig.MAX_PAUSE_DURATION * 60000) {
 		return {
 			text: `You can't pause for more than ${TakesConfig.MAX_PAUSE_DURATION} minutes!`,
 			response_type: "ephemeral",
@@ -49,15 +54,19 @@ export default async function handlePause(
 		})
 		.where(eq(takesTable.id, takeToUpdate.id));
 
+	const descriptionText = takeToUpdate.description
+		? `\n\n*Working on:* ${takeToUpdate.description}`
+		: "";
+
 	return {
-		text: `⏸️ Session paused! You have ${prettyPrintTime(TakesConfig.MAX_PAUSE_DURATION * 60000 - pausedTime)} remaining. It will automatically finish at ${generateSlackDate(new Date(Date.now() + TakesConfig.MAX_PAUSE_DURATION * 60000))}`,
+		text: `⏸️ Session paused! You have ${prettyPrintTime(endTime.remaining)} remaining. It will automatically finish at ${generateSlackDate(new Date(Date.now() + TakesConfig.MAX_PAUSE_DURATION * 60000))}`,
 		response_type: "ephemeral",
 		blocks: [
 			{
 				type: "section",
 				text: {
 					type: "mrkdwn",
-					text: `⏸️ Session paused! You have ${prettyPrintTime(TakesConfig.MAX_PAUSE_DURATION * 60000 - pausedTime)} remaining.`,
+					text: `⏸️ Session paused! You have ${prettyPrintTime(endTime.remaining)} remaining.${descriptionText}`,
 				},
 			},
 			{
@@ -68,23 +77,13 @@ export default async function handlePause(
 				elements: [
 					{
 						type: "mrkdwn",
-						text: `It will automatically finish at ${generateSlackDate(new Date(Date.now() + TakesConfig.MAX_PAUSE_DURATION * 60000))} if not resumed.`,
+						text: `It will automatically finish in ${prettyPrintTime(pausedTime)} (by ${generateSlackDate(new Date(new Date().getTime() - pausedTime))}) if not resumed.`,
 					},
 				],
 			},
 			{
 				type: "actions",
 				elements: [
-					{
-						type: "button",
-						text: {
-							type: "plain_text",
-							text: "✍️ edit",
-							emoji: true,
-						},
-						value: "edit",
-						action_id: "takes_edit",
-					},
 					{
 						type: "button",
 						text: {
