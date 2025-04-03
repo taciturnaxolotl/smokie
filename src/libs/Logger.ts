@@ -1,9 +1,8 @@
 import { slackClient } from "../index";
-
 import Bottleneck from "bottleneck";
 import Queue from "./queue";
-
 import colors from "colors";
+import * as Sentry from "@sentry/bun";
 import type {
 	ChatPostMessageRequest,
 	ChatPostMessageResponse,
@@ -16,10 +15,21 @@ const limiter = new Bottleneck({
 
 const messageQueue = new Queue();
 
-function sendMessage(
+async function sendMessage(
 	message: ChatPostMessageRequest,
 ): Promise<ChatPostMessageResponse> {
-	return limiter.schedule(() => slackClient.chat.postMessage(message));
+	try {
+		return await limiter.schedule(() =>
+			slackClient.chat.postMessage(message),
+		);
+	} catch (error) {
+		Sentry.captureException(error, {
+			extra: { channel: message.channel, text: message.text },
+			tags: { type: "slack_message_error" },
+		});
+		console.error("Failed to send Slack message:", error);
+		throw error;
+	}
 }
 
 async function slog(
@@ -29,58 +39,85 @@ async function slog(
 		channel: string;
 	},
 ): Promise<void> {
-	const message: ChatPostMessageRequest = {
-		channel: location?.channel || process.env.SLACK_LOG_CHANNEL || "",
-		thread_ts: location?.thread_ts,
-		text: logMessage.substring(0, 2500),
-		blocks: [
-			{
-				type: "section",
-				text: {
-					type: "mrkdwn",
-					text: logMessage
-						.split("\n")
-						.map((a) => `> ${a}`)
-						.join("\n"),
-				},
-			},
-			{
-				type: "context",
-				elements: [
-					{
-						type: "mrkdwn",
-						text: `${new Date().toString()}`,
-					},
-				],
-			},
-		],
-	};
+	try {
+		const channel = location?.channel || process.env.SLACK_LOG_CHANNEL;
 
-	messageQueue.enqueue(() => sendMessage(message));
+		if (!channel) {
+			throw new Error("No Slack channel specified for logging");
+		}
+
+		const message: ChatPostMessageRequest = {
+			channel,
+			thread_ts: location?.thread_ts,
+			text: logMessage.substring(0, 2500),
+			blocks: [
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: logMessage
+							.split("\n")
+							.map((a) => `> ${a}`)
+							.join("\n"),
+					},
+				},
+				{
+					type: "context",
+					elements: [
+						{
+							type: "mrkdwn",
+							text: `${new Date().toString()}`,
+						},
+					],
+				},
+			],
+		};
+
+		messageQueue.enqueue(() => sendMessage(message));
+	} catch (error) {
+		Sentry.captureException(error, {
+			extra: { logMessage, location, channel: location?.channel },
+			tags: { type: "slog_error" },
+		});
+		console.error("Failed to queue Slack log message:", error);
+	}
 }
 
 type LogType = "info" | "start" | "cron" | "error";
 
-export async function clog(logMessage: string, type: LogType): Promise<void> {
+type LogMetadata = {
+	error?: Error;
+	context?: string;
+	additional?: Record<string, unknown>;
+};
+
+export async function clog(
+	logMessage: string,
+	type: LogType,
+	metadata?: LogMetadata,
+): Promise<void> {
+	const timestamp = new Date().toISOString();
+	const formattedMessage = `[${timestamp}] ${logMessage}`;
+
 	switch (type) {
 		case "info":
-			console.log(colors.blue(logMessage));
+			console.log(colors.blue(formattedMessage));
 			break;
 		case "start":
-			console.log(colors.green(logMessage));
+			console.log(colors.green(formattedMessage));
 			break;
 		case "cron":
-			console.log(colors.magenta(`[CRON]: ${logMessage}`));
+			console.log(colors.magenta(`[CRON]: ${formattedMessage}`));
 			break;
-		case "error":
-			console.error(
-				colors.red.bold(
-					`Yo <@S0790GPRA48> deres an error \n\n [ERROR]: ${logMessage}`,
-				),
+		case "error": {
+			const errorMessage = colors.red.bold(
+				`Yo <@S0790GPRA48> deres an error \n\n [ERROR]: ${formattedMessage}`,
 			);
+			console.error(errorMessage);
 			break;
+		}
 		default:
-			console.log(logMessage);
+			console.log(formattedMessage);
 	}
 }
 
@@ -91,9 +128,20 @@ export async function blog(
 		thread_ts?: string;
 		channel: string;
 	},
+	metadata?: LogMetadata,
 ): Promise<void> {
-	slog(logMessage, location);
-	clog(logMessage, type);
+	try {
+		await Promise.all([
+			slog(logMessage, location),
+			clog(logMessage, type, metadata),
+		]);
+	} catch (error) {
+		console.error("Failed to log message:", error);
+		Sentry.captureException(error, {
+			extra: { logMessage, type, location, metadata },
+			tags: { type: "blog_error" },
+		});
+	}
 }
 
 export { clog as default, slog };

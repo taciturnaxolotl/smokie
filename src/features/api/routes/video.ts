@@ -1,34 +1,42 @@
+import { handleApiError } from "../../../libs/apiError";
 import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 import { eq, and } from "drizzle-orm";
 
 export default async function getVideo(url: URL): Promise<Response> {
-	const videoId = url.pathname.split("/")[2];
-	const thumbnail = url.pathname.split("/")[3] === "thumbnail";
+	try {
+		const videoId = url.pathname.split("/")[2];
+		const thumbnail = url.pathname.split("/")[3] === "thumbnail";
 
-	if (!videoId) {
-		return new Response("Invalid video id", { status: 400 });
-	}
+		if (!videoId) {
+			return new Response(JSON.stringify({ error: "Invalid video id" }), {
+				status: 400,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
 
-	const video = await db
-		.select()
-		.from(takesTable)
-		.where(eq(takesTable.id, videoId));
+		const video = await db
+			.select()
+			.from(takesTable)
+			.where(eq(takesTable.id, videoId));
 
-	if (video.length === 0) {
-		return new Response("Video not found", { status: 404 });
-	}
+		if (video.length === 0) {
+			return new Response(JSON.stringify({ error: "Video not found" }), {
+				status: 404,
+				headers: { "Content-Type": "application/json" },
+			});
+		}
 
-	const videoData = video[0];
+		const videoData = video[0];
 
-	if (thumbnail) {
-		return Response.redirect(
-			`https://cachet.dunkirk.sh/users/${videoData?.userId}/r`,
-		);
-	}
+		if (thumbnail) {
+			return Response.redirect(
+				`https://cachet.dunkirk.sh/users/${videoData?.userId}/r`,
+			);
+		}
 
-	return new Response(
-		`<!DOCTYPE html>
+		return new Response(
+			`<!DOCTYPE html>
         <html>
         <head>
         <title>Video Player</title>
@@ -68,10 +76,13 @@ export default async function getVideo(url: URL): Promise<Response> {
         </div>
         </body>
         </html>`,
-		{
-			headers: {
-				"Content-Type": "text/html",
+			{
+				headers: {
+					"Content-Type": "text/html",
+				},
 			},
-		},
-	);
+		);
+	} catch (error) {
+		return handleApiError(error, "getVideo");
+	}
 }

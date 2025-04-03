@@ -1,19 +1,30 @@
 import { recentTakes, takesPerUser } from "./routes/recentTakes";
 import video from "./routes/video";
+import { handleApiError } from "../../libs/apiError";
 
 export { default as video } from "./routes/video";
 
 export async function apiRouter(url: URL) {
-	const path = url.pathname.split("/")[2];
+	try {
+		const path = url.pathname.split("/")[2];
 
-	switch (path) {
-		case "video":
-			return video(url);
-		case "recentTakes":
-			return recentTakes();
-		case "takesPerUser":
-			return takesPerUser(url.pathname.split("/")[3] as string);
-		default:
-			return new Response("404 Not Found", { status: 404 });
+		switch (path) {
+			case "video":
+				return await video(url);
+			case "recentTakes":
+				return await recentTakes();
+			case "takesPerUser":
+				return await takesPerUser(url.pathname.split("/")[3] as string);
+			default:
+				return new Response(
+					JSON.stringify({ error: "Route not found" }),
+					{
+						status: 404,
+						headers: { "Content-Type": "application/json" },
+					},
+				);
+		}
+	} catch (error) {
+		return handleApiError(error, "apiRouter");
 	}
 }

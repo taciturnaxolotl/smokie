@@ -133,8 +133,6 @@ export async function checkActiveSessions() {
 				.set({ notifiedLowTime: true })
 				.where(eq(takesTable.id, take.id));
 
-			console.log("Sending low time warning to user");
-
 			try {
 				await slackApp.client.chat.postMessage({
 					channel: take.userId,
