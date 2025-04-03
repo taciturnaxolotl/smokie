@@ -111,7 +111,7 @@ export default async function handleStop(
 					elements: [
 						{
 							type: "mrkdwn",
-							text: `\`${prettyPrintTime(elapsed)}\`${activeTakeToStop.description ? ` Working on: *${activeTakeToStop.description}*` : ""}`,
+							text: `\`${prettyPrintTime(elapsed)}\`${activeTakeToStop.description ? ` working on: *${activeTakeToStop.description}*` : ""}`,
 						},
 					],
 				},
