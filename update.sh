@@ -1,3 +1,4 @@
+cd ~/takes
 git restore bun.lock
 git fetch --all
 git reset --hard origin/main
