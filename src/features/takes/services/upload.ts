@@ -3,6 +3,7 @@ import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 import { eq, and } from "drizzle-orm";
 import { prettyPrintTime } from "../../../libs/time";
+import { calculateElapsedTime } from "../../../libs/time-periods";
 
 export default async function upload() {
 	slackApp.anyMessage(async ({ payload }) => {
@@ -58,13 +59,14 @@ export default async function upload() {
 			const match = html.match(/src="([^"]*\.mp4[^"]*)"/);
 			const takePublicUrl = match?.[1];
 
+			const takeUploadedAt = new Date();
+
 			await db
 				.update(takesTable)
 				.set({
 					status: "uploaded",
-					takeUploadedAt: new Date(),
+					takeUploadedAt,
 					takeUrl: takePublicUrl,
-					takeThumbUrl: file?.thumb_video,
 				})
 				.where(eq(takesTable.id, take.id));
 
@@ -73,6 +75,8 @@ export default async function upload() {
 				timestamp: payload.ts as string,
 				name: "fire",
 			});
+
+			const takeDuration = calculateElapsedTime(JSON.parse(take.periods));
 
 			await slackClient.chat.postMessage({
 				channel: payload.channel,
@@ -94,7 +98,7 @@ export default async function upload() {
 						elements: [
 							{
 								type: "mrkdwn",
-								text: `take by <@${user}> for \`${prettyPrintTime(take.durationMinutes * 60000)}\` working on: *${take.description}*`,
+								text: `take by <@${user}> for \`${prettyPrintTime(takeDuration)}\` working on: *${take.description}*`,
 							},
 						],
 					},
@@ -103,13 +107,13 @@ export default async function upload() {
 
 			await slackClient.chat.postMessage({
 				channel: process.env.SLACK_REVIEW_CHANNEL || "",
-				text: "",
+				text: ":video_camera: new take uploaded!",
 				blocks: [
 					{
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: `:video_camera: new take uploaded by <@${user}> for \`${prettyPrintTime(take.durationMinutes * 60000)}\` working on: *${take.description}*`,
+							text: `:video_camera: new take uploaded by <@${user}> for \`${prettyPrintTime(takeDuration)}\` working on: *${take.description}*`,
 						},
 					},
 					{
@@ -121,10 +125,10 @@ export default async function upload() {
 						title_url: `${process.env.API_URL}/video/${take.id}`,
 						title: {
 							type: "plain_text",
-							text: `take on ${take.takeUploadedAt?.toISOString()}`,
+							text: `takes from ${takeUploadedAt?.toISOString()}`,
 						},
 						thumbnail_url: `https://cachet.dunkirk.sh/users/${payload.user}/r`,
-						alt_text: `take on ${take.takeUploadedAt?.toISOString()}`,
+						alt_text: `takes from ${takeUploadedAt?.toISOString()}`,
 					},
 					{
 						type: "divider",
@@ -214,7 +218,7 @@ export default async function upload() {
 						elements: [
 							{
 								type: "mrkdwn",
-								text: `take by <@${user}> for \`${prettyPrintTime(take.durationMinutes * 60000)}\` working on: *${take.description}*`,
+								text: `take by <@${user}> for \`${prettyPrintTime(takeDuration)}\` working on: *${take.description}*`,
 							},
 						],
 					},
@@ -248,10 +252,14 @@ export default async function upload() {
 			})
 			.where(eq(takesTable.id, takeId));
 
+		const takeDuration = calculateElapsedTime(
+			JSON.parse(take[0]?.periods as string),
+		);
+
 		await slackClient.chat.postMessage({
 			channel: payload.user.id,
 			thread_ts: take[0]?.ts as string,
-			text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number(((take[0]?.durationMinutes as number) * Number(multiplier)) / 60).toFixed(1)} takes*!`,
+			text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeDuration * Number(multiplier)) / 60).toFixed(1)} takes*!`,
 		});
 
 		// delete the message from the review channel

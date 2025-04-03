@@ -4,7 +4,11 @@ import { eq } from "drizzle-orm";
 import TakesConfig from "../../../libs/config";
 import { getActiveTake } from "../services/database";
 import type { MessageResponse } from "../types";
-import { prettyPrintTime } from "../../../libs/time";
+import { generateSlackDate, prettyPrintTime } from "../../../libs/time";
+import {
+	addNewPeriod,
+	getPausedTimeRemaining,
+} from "../../../libs/time-periods";
 
 export default async function handlePause(
 	userId: string,
@@ -22,32 +26,38 @@ export default async function handlePause(
 		return;
 	}
 
+	const newPeriods = JSON.stringify(
+		addNewPeriod(takeToUpdate.periods, "paused"),
+	);
+
+	const pausedTime = getPausedTimeRemaining(newPeriods);
+
+	if (pausedTime > TakesConfig.MAX_PAUSE_DURATION) {
+		return {
+			text: `You can't pause for more than ${TakesConfig.MAX_PAUSE_DURATION} minutes!`,
+			response_type: "ephemeral",
+		};
+	}
+
 	// Update the takes entry to paused status
 	await db
 		.update(takesTable)
 		.set({
 			status: "paused",
-			pausedAt: new Date(),
+			periods: newPeriods,
 			notifiedPauseExpiration: false, // Reset pause expiration notification
 		})
 		.where(eq(takesTable.id, takeToUpdate.id));
 
-	// Calculate when the pause will expire
-	const pauseExpires = new Date();
-	pauseExpires.setMinutes(
-		pauseExpires.getMinutes() + TakesConfig.MAX_PAUSE_DURATION,
-	);
-	const pauseExpiresStr = `<!date^${Math.floor(pauseExpires.getTime() / 1000)}^{date_short_pretty} at {time}|${pauseExpires.toLocaleString()}>`;
-
 	return {
-		text: `⏸️ Session paused! You have ${prettyPrintTime(takeToUpdate.durationMinutes * 60000)} remaining. It will automatically finish in ${TakesConfig.MAX_PAUSE_DURATION} minutes (by ${pauseExpiresStr}) if not resumed.`,
+		text: `⏸️ Session paused! You have ${prettyPrintTime(TakesConfig.MAX_PAUSE_DURATION * 60000 - pausedTime)} remaining. It will automatically finish at ${generateSlackDate(new Date(Date.now() + TakesConfig.MAX_PAUSE_DURATION * 60000))}`,
 		response_type: "ephemeral",
 		blocks: [
 			{
 				type: "section",
 				text: {
 					type: "mrkdwn",
-					text: `⏸️ Session paused! You have ${prettyPrintTime(takeToUpdate.durationMinutes * 60000)} remaining.`,
+					text: `⏸️ Session paused! You have ${prettyPrintTime(TakesConfig.MAX_PAUSE_DURATION * 60000 - pausedTime)} remaining.`,
 				},
 			},
 			{
@@ -58,7 +68,7 @@ export default async function handlePause(
 				elements: [
 					{
 						type: "mrkdwn",
-						text: `It will automatically finish in ${TakesConfig.MAX_PAUSE_DURATION} minutes (by ${pauseExpiresStr}) if not resumed.`,
+						text: `It will automatically finish at ${generateSlackDate(new Date(Date.now() + TakesConfig.MAX_PAUSE_DURATION * 60000))} if not resumed.`,
 					},
 				],
 			},

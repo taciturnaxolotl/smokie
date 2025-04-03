@@ -4,12 +4,12 @@ import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 import TakesConfig from "../../../libs/config";
 import { generateSlackDate, prettyPrintTime } from "../../../libs/time";
+import { getRemainingTime } from "../../../libs/time-periods";
 
 export default async function handleStart(
 	userId: string,
 	channelId: string,
 	description?: string,
-	durationMinutes?: number,
 ): Promise<MessageResponse> {
 	const activeTake = await getActiveTake(userId);
 	if (activeTake.length > 0) {
@@ -23,10 +23,16 @@ export default async function handleStart(
 	const newTake = {
 		id: Bun.randomUUIDv7(),
 		userId,
-		channelId,
 		status: "active",
-		startedAt: new Date(),
-		durationMinutes: durationMinutes || TakesConfig.DEFAULT_SESSION_LENGTH,
+		targetDurationMs: TakesConfig.DEFAULT_SESSION_LENGTH * 60000,
+		periods: JSON.stringify([
+			{
+				type: "active",
+				startTime: Date.now(),
+				endTime: null,
+			},
+		]),
+		elapsedTimeMs: 0,
 		description: description || null,
 		notifiedLowTime: false,
 		notifiedPauseExpiration: false,
@@ -35,15 +41,16 @@ export default async function handleStart(
 	await db.insert(takesTable).values(newTake);
 
 	// Calculate end time for message
-	const endTime = new Date(
-		newTake.startedAt.getTime() + newTake.durationMinutes * 60000,
+	const endTime = getRemainingTime(
+		TakesConfig.DEFAULT_SESSION_LENGTH * 60000,
+		newTake.periods,
 	);
 
 	const descriptionText = description
 		? `\n\n*Working on:* ${description}`
 		: "";
 	return {
-		text: `🎬 Takes session started! You have ${prettyPrintTime(newTake.durationMinutes * 60000)} until ${generateSlackDate(endTime)}.${descriptionText}`,
+		text: `🎬 Takes session started! You have ${prettyPrintTime(endTime.remaining)} until ${generateSlackDate(endTime.endTime)}.${descriptionText}`,
 		response_type: "ephemeral",
 		blocks: [
 			{
@@ -61,7 +68,7 @@ export default async function handleStart(
 				elements: [
 					{
 						type: "mrkdwn",
-						text: `You have ${prettyPrintTime(newTake.durationMinutes * 60000)} left until ${generateSlackDate(endTime)}.`,
+						text: `You have ${prettyPrintTime(endTime.remaining)} left until ${generateSlackDate(endTime.endTime)}.`,
 					},
 				],
 			},

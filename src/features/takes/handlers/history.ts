@@ -2,6 +2,8 @@ import type { AnyMessageBlock } from "slack-edge";
 import TakesConfig from "../../../libs/config";
 import { getCompletedTakes } from "../services/database";
 import type { MessageResponse } from "../types";
+import { calculateElapsedTime } from "../../../libs/time-periods";
+import { prettyPrintTime } from "../../../libs/time";
 
 export async function handleHistory(userId: string): Promise<MessageResponse> {
 	// Get completed takes for the user
@@ -25,24 +27,14 @@ export async function handleHistory(userId: string): Promise<MessageResponse> {
 			type: "header",
 			text: {
 				type: "plain_text",
-				text: `📋 Your most recent ${completedTakes.length} Takes Sessions`,
+				text: `📋 Your most recent ${completedTakes.length} Takes sessions`,
 				emoji: true,
 			},
 		},
 	];
 
 	for (const take of completedTakes) {
-		const startTime = new Date(take.startedAt);
-		const endTime = take.completedAt || startTime;
-
-		// Calculate duration in minutes
-		const durationMs = endTime.getTime() - startTime.getTime();
-		const pausedMs = take.pausedTimeMs || 0;
-		const activeDuration = Math.round((durationMs - pausedMs) / 60000);
-
-		// Format dates
-		const startDate = `<!date^${Math.floor(startTime.getTime() / 1000)}^{date_short_pretty} at {time}|${startTime.toLocaleString()}>`;
-		const endDate = `<!date^${Math.floor(endTime.getTime() / 1000)}^{date_short_pretty} at {time}|${endTime.toLocaleString()}>`;
+		const elapsedTime = calculateElapsedTime(JSON.parse(take.periods));
 
 		const notes = take.notes ? `\n• Notes: ${take.notes}` : "";
 		const description = take.description
@@ -53,11 +45,7 @@ export async function handleHistory(userId: string): Promise<MessageResponse> {
 			type: "section",
 			text: {
 				type: "mrkdwn",
-				text: `*Take on ${startDate}*\n${description}• Duration: ${activeDuration} minutes${
-					pausedMs > 0
-						? ` (+ ${Math.round(pausedMs / 60000)} minutes paused)`
-						: ""
-				}\n• Started: ${startDate}\n• Completed: ${endDate}${notes}`,
+				text: `*Duration:* \`${prettyPrintTime(elapsedTime)}\`\n*Status:* ${take.status}\n${notes ? `*Notes:* ${take.notes}\n` : ""}${description ? `*Description:* ${take.description}\n` : ""}`,
 			},
 		});
 

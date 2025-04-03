@@ -4,6 +4,11 @@ import { takes as takesTable } from "../../../libs/schema";
 import { eq } from "drizzle-orm";
 import { getActiveTake, getPausedTake } from "../services/database";
 import type { MessageResponse } from "../types";
+import { prettyPrintTime } from "../../../libs/time";
+import {
+	calculateElapsedTime,
+	getRemainingTime,
+} from "../../../libs/time-periods";
 
 export default async function handleStop(
 	userId: string,
@@ -33,9 +38,34 @@ export default async function handleStop(
 			notes = args.slice(1).join(" ");
 		}
 
+		const elapsed = calculateElapsedTime(
+			JSON.parse(pausedTakeToStop.periods),
+		);
+
 		const res = await slackClient.chat.postMessage({
 			channel: userId,
 			text: "🎬 Your paused takes session has been completed. Please upload your takes video in this thread within the next 24 hours!",
+			blocks: [
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: "🎬 Your paused takes session has been completed. Please upload your takes video in this thread within the next 24 hours!",
+					},
+				},
+				{
+					type: "divider",
+				},
+				{
+					type: "context",
+					elements: [
+						{
+							type: "mrkdwn",
+							text: `*Duration:* ${prettyPrintTime(elapsed)} ${notes ? `\n*Notes:* ${notes}` : ""}`,
+						},
+					],
+				},
+			],
 		});
 
 		await db
@@ -60,9 +90,34 @@ export default async function handleStop(
 			notes = args.slice(1).join(" ");
 		}
 
+		const elapsed = calculateElapsedTime(
+			JSON.parse(activeTakeToStop.periods),
+		);
+
 		const res = await slackClient.chat.postMessage({
 			channel: userId,
 			text: "🎬 Your takes session has been completed. Please upload your takes video in this thread within the next 24 hours!",
+			blocks: [
+				{
+					type: "section",
+					text: {
+						type: "mrkdwn",
+						text: "🎬 Your takes session has been completed. Please upload your takes video in this thread within the next 24 hours!",
+					},
+				},
+				{
+					type: "divider",
+				},
+				{
+					type: "context",
+					elements: [
+						{
+							type: "mrkdwn",
+							text: `*Duration:* ${prettyPrintTime(elapsed)} ${notes ? `\n*Notes:* ${notes}` : ""}`,
+						},
+					],
+				},
+			],
 		});
 
 		await db

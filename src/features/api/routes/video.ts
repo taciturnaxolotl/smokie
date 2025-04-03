@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 
 export default async function getVideo(url: URL): Promise<Response> {
 	const videoId = url.pathname.split("/")[2];
+	const thumbnail = url.pathname.split("/")[3] === "thumbnail";
 
 	if (!videoId) {
 		return new Response("Invalid video id", { status: 400 });
@@ -19,6 +20,12 @@ export default async function getVideo(url: URL): Promise<Response> {
 	}
 
 	const videoData = video[0];
+
+	if (thumbnail) {
+		return Response.redirect(
+			`https://cachet.dunkirk.sh/users/${videoData?.userId}/r`,
+		);
+	}
 
 	return new Response(
 		`<!DOCTYPE html>

@@ -1,6 +1,6 @@
 import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, not } from "drizzle-orm";
 
 export async function getActiveTake(userId: string) {
 	return db
@@ -29,7 +29,10 @@ export async function getCompletedTakes(userId: string, limit = 5) {
 		.where(
 			and(
 				eq(takesTable.userId, userId),
-				eq(takesTable.status, "completed"),
+				and(
+					not(eq(takesTable.status, "active")),
+					not(eq(takesTable.status, "paused")),
+				),
 			),
 		)
 		.orderBy(desc(takesTable.completedAt))

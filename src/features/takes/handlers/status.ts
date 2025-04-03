@@ -1,6 +1,10 @@
 import TakesConfig from "../../../libs/config";
 import { generateSlackDate, prettyPrintTime } from "../../../libs/time";
 import {
+	getPausedTimeRemaining,
+	getRemainingTime,
+} from "../../../libs/time-periods";
+import {
 	getActiveTake,
 	getCompletedTakes,
 	getPausedTake,
@@ -22,18 +26,7 @@ export default async function handleStatus(
 			return;
 		}
 
-		const startTime = new Date(take.startedAt);
-		const endTime = new Date(
-			startTime.getTime() + take.durationMinutes * 60000,
-		);
-
-		// Adjust for paused time
-		if (take.pausedTimeMs) {
-			endTime.setTime(endTime.getTime() + take.pausedTimeMs);
-		}
-
-		const now = new Date();
-		const remainingMs = endTime.getTime() - now.getTime();
+		const endTime = getRemainingTime(take.targetDurationMs, take.periods);
 
 		// Add description to display if present
 		const descriptionText = take.description
@@ -41,7 +34,7 @@ export default async function handleStatus(
 			: "";
 
 		return {
-			text: `🎬 You have an active takes session with ${prettyPrintTime(remainingMs)} remaining.${descriptionText}`,
+			text: `🎬 You have an active takes session with ${prettyPrintTime(endTime.remaining)} remaining.${descriptionText}`,
 			response_type: "ephemeral",
 			blocks: [
 				{
@@ -59,7 +52,7 @@ export default async function handleStatus(
 					elements: [
 						{
 							type: "mrkdwn",
-							text: `You have ${prettyPrintTime(remainingMs)} remaining until ${generateSlackDate(endTime)}.`,
+							text: `You have ${prettyPrintTime(endTime.remaining)} remaining until ${generateSlackDate(endTime.endTime)}.`,
 						},
 					],
 				},
@@ -119,25 +112,16 @@ export default async function handleStatus(
 
 	if (pausedTakeStatus.length > 0) {
 		const pausedTake = pausedTakeStatus[0];
-		if (!pausedTake || !pausedTake.pausedAt) {
+		if (!pausedTake) {
 			return;
 		}
 
 		// Calculate how much time remains before auto-completion
-		const now = new Date();
-		const pausedDuration =
-			(now.getTime() - pausedTake.pausedAt.getTime()) / (60 * 1000); // In minutes
-		const remainingPauseTime = Math.max(
-			0,
-			TakesConfig.MAX_PAUSE_DURATION - pausedDuration,
+		const endTime = getRemainingTime(
+			pausedTake.targetDurationMs,
+			pausedTake.periods,
 		);
-
-		// Format the pause timeout
-		const pauseExpires = new Date(pausedTake.pausedAt);
-		pauseExpires.setMinutes(
-			pauseExpires.getMinutes() + TakesConfig.MAX_PAUSE_DURATION,
-		);
-		const pauseExpiresStr = `<!date^${Math.floor(pauseExpires.getTime() / 1000)}^{date_short_pretty} at {time}|${pauseExpires.toLocaleString()}>`;
+		const pauseExpires = getPausedTimeRemaining(pausedTake.periods);
 
 		// Add notes to display if present
 		const noteText = pausedTake.notes
@@ -145,14 +129,14 @@ export default async function handleStatus(
 			: "";
 
 		return {
-			text: `⏸️ You have a paused takes session. It will auto-complete in ${remainingPauseTime.toFixed(1)} minutes if not resumed.`,
+			text: `⏸️ You have a paused takes session. It will auto-complete in ${prettyPrintTime(pauseExpires)} if not resumed.`,
 			response_type: "ephemeral",
 			blocks: [
 				{
 					type: "section",
 					text: {
 						type: "mrkdwn",
-						text: `⏸️ Session paused! You have ${prettyPrintTime(pausedTake.durationMinutes * 60000)} remaining.`,
+						text: `⏸️ Session paused! You have ${prettyPrintTime(endTime.remaining)} remaining.`,
 					},
 				},
 				{
@@ -163,7 +147,7 @@ export default async function handleStatus(
 					elements: [
 						{
 							type: "mrkdwn",
-							text: `It will automatically finish in ${TakesConfig.MAX_PAUSE_DURATION} minutes (by ${pauseExpiresStr}) if not resumed.`,
+							text: `It will automatically finish in ${prettyPrintTime(pauseExpires)} (by ${generateSlackDate(new Date(new Date().getTime() - pauseExpires))}) if not resumed.`,
 						},
 					],
 				},
@@ -214,9 +198,8 @@ export default async function handleStatus(
 				const diffMs =
 					new Date().getTime() -
 					// @ts-expect-error - TS doesn't know that we are checking the length
-					completedSessions[
-						completedSessions.length - 1
-					].startedAt.getTime();
+					completedSessions[completedSessions.length - 1]
+						?.completedAt;
 
 				const hours = Math.ceil(diffMs / (1000 * 60 * 60));
 				if (hours < 24) return `${hours} hours`;

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { generateSlackDate, prettyPrintTime } from "../../../libs/time";
 import { getPausedTake } from "../services/database";
 import type { MessageResponse } from "../types";
+import { addNewPeriod, getRemainingTime } from "../../../libs/time-periods";
 
 export default async function handleResume(
 	userId: string,
@@ -22,35 +23,28 @@ export default async function handleResume(
 	}
 
 	const now = new Date();
-
-	// Calculate paused time
-	if (pausedSession.pausedAt) {
-		const pausedTimeMs = now.getTime() - pausedSession.pausedAt.getTime();
-		const totalPausedTime =
-			(pausedSession.pausedTimeMs || 0) + pausedTimeMs;
-
-		// Update the takes entry to active status
-		await db
-			.update(takesTable)
-			.set({
-				status: "active",
-				pausedAt: null,
-				pausedTimeMs: totalPausedTime,
-				notifiedLowTime: false, // Reset low time notification
-			})
-			.where(eq(takesTable.id, pausedSession.id));
-	}
-
-	const endTime = new Date(
-		new Date(pausedSession.startedAt).getTime() +
-			pausedSession.durationMinutes * 60000 +
-			(pausedSession.pausedTimeMs || 0),
+	const newPeriods = JSON.stringify(
+		addNewPeriod(pausedSession.periods, "active"),
 	);
 
-	const timeRemaining = endTime.getTime() - now.getTime();
+	// Update the takes entry to active status
+	await db
+		.update(takesTable)
+		.set({
+			status: "active",
+			lastResumeAt: now,
+			periods: newPeriods,
+			notifiedLowTime: false, // Reset low time notification
+		})
+		.where(eq(takesTable.id, pausedSession.id));
+
+	const endTime = getRemainingTime(
+		pausedSession.targetDurationMs,
+		pausedSession.periods,
+	);
 
 	return {
-		text: `▶️ Takes session resumed! You have ${prettyPrintTime(timeRemaining)} remaining in your session.`,
+		text: `▶️ Takes session resumed! You have ${prettyPrintTime(endTime.remaining)} remaining in your session.`,
 		response_type: "ephemeral",
 		blocks: [
 			{
@@ -68,7 +62,7 @@ export default async function handleResume(
 				elements: [
 					{
 						type: "mrkdwn",
-						text: `You have ${prettyPrintTime(timeRemaining)} remaining until ${generateSlackDate(endTime)}.`,
+						text: `You have ${prettyPrintTime(endTime.remaining)} remaining until ${generateSlackDate(endTime.endTime)}.`,
 					},
 				],
 			},
