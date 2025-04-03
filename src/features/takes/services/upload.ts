@@ -3,7 +3,7 @@ import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 import { eq, and } from "drizzle-orm";
 import { prettyPrintTime } from "../../../libs/time";
-import { calculateElapsedTime } from "../../../libs/time-periods";
+import * as Sentry from "@sentry/bun";
 
 export default async function upload() {
 	slackApp.anyMessage(async ({ payload }) => {
@@ -224,77 +224,135 @@ export default async function upload() {
 			});
 		} catch (error) {
 			console.error("Error handling file message:", error);
+			await slackClient.chat.postMessage({
+				channel: payload.channel,
+				thread_ts: payload.thread_ts,
+				text: ":warning: there was an error processing your upload",
+			});
+
+			Sentry.captureException(error, {
+				extra: {
+					channel: payload.channel,
+					user: payload.user,
+					thread_ts: payload.thread_ts,
+				},
+				tags: {
+					type: "file_upload_error",
+				},
+			});
 		}
 	});
 
 	slackApp.action("select_multiplier", async () => {});
 
 	slackApp.action("approve", async ({ payload, context }) => {
-		const multiplier = Object.values(payload.state.values)[0]
-			?.select_multiplier?.selected_option?.value;
-		// @ts-expect-error
-		const takeId = payload.actions[0]?.value;
+		try {
+			const multiplier = Object.values(payload.state.values)[0]
+				?.select_multiplier?.selected_option?.value;
+			// @ts-expect-error
+			const takeId = payload.actions[0]?.value;
 
-		const take = await db
-			.select()
-			.from(takesTable)
-			.where(eq(takesTable.id, takeId));
-		if (take.length === 0) {
-			return;
-		}
-		const takeToApprove = take[0];
-		if (!takeToApprove) return;
+			const take = await db
+				.select()
+				.from(takesTable)
+				.where(eq(takesTable.id, takeId));
+			if (take.length === 0) {
+				return;
+			}
+			const takeToApprove = take[0];
+			if (!takeToApprove) return;
 
-		await db
-			.update(takesTable)
-			.set({
-				status: "approved",
-				multiplier: multiplier,
-			})
-			.where(eq(takesTable.id, takeId));
+			await db
+				.update(takesTable)
+				.set({
+					status: "approved",
+					multiplier: multiplier,
+				})
+				.where(eq(takesTable.id, takeId));
 
-		await slackClient.chat.postMessage({
-			channel: payload.user.id,
-			thread_ts: take[0]?.ts as string,
-			text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeToApprove.elapsedTimeMs * Number(multiplier)) / 60).toFixed(1)} takes*!`,
-		});
-
-		// delete the message from the review channel
-		if (context.respond)
-			await context.respond({
-				delete_original: true,
+			await slackClient.chat.postMessage({
+				channel: payload.user.id,
+				thread_ts: take[0]?.ts as string,
+				text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeToApprove.elapsedTimeMs * Number(multiplier)) / 60).toFixed(1)} takes*!`,
 			});
+
+			// delete the message from the review channel
+			if (context.respond)
+				await context.respond({
+					delete_original: true,
+				});
+		} catch (error) {
+			console.error("Error approving take:", error);
+
+			await slackClient.chat.postEphemeral({
+				channel: process.env.SLACK_REVIEW_CHANNEL || "",
+				user: payload.user.id,
+				text: ":warning: there was an error approving the take",
+			});
+
+			Sentry.captureException(error, {
+				extra: {
+					// @ts-expect-error
+					take: payload.actions[0]?.value,
+					userApproving: payload.user,
+				},
+				tags: {
+					type: "take_approve_error",
+				},
+			});
+		}
 	});
 
 	slackApp.action("reject", async ({ payload, context }) => {
-		// @ts-expect-error
-		const takeId = payload.actions[0]?.value;
+		try {
+			// @ts-expect-error
+			const takeId = payload.actions[0]?.value;
 
-		const take = await db
-			.select()
-			.from(takesTable)
-			.where(eq(takesTable.id, takeId));
-		if (take.length === 0) {
-			return;
-		}
-		await db
-			.update(takesTable)
-			.set({
-				status: "rejected",
-				multiplier: "0",
-			})
-			.where(eq(takesTable.id, takeId));
+			const take = await db
+				.select()
+				.from(takesTable)
+				.where(eq(takesTable.id, takeId));
+			if (take.length === 0) {
+				return;
+			}
+			await db
+				.update(takesTable)
+				.set({
+					status: "rejected",
+					multiplier: "0",
+				})
+				.where(eq(takesTable.id, takeId));
 
-		await slackClient.chat.postMessage({
-			channel: payload.user.id,
-			thread_ts: take[0]?.ts as string,
-			text: "take rejected :(",
-		});
-
-		// delete the message from the review channel
-		if (context.respond)
-			await context.respond({
-				delete_original: true,
+			await slackClient.chat.postMessage({
+				channel: payload.user.id,
+				thread_ts: take[0]?.ts as string,
+				text: "take rejected :(",
 			});
+
+			// delete the message from the review channel
+			if (context.respond)
+				await context.respond({
+					delete_original: true,
+				});
+		} catch (error) {
+			console.error("Error rejecting take:", error);
+
+			await slackClient.chat.postEphemeral({
+				channel: process.env.SLACK_REVIEW_CHANNEL || "",
+				user: payload.user.id,
+				text: ":warning: there was an error rejecting the take",
+			});
+
+			Sentry.captureException(error, {
+				extra: {
+					// @ts-expect-error
+					take: payload.actions[0]?.value,
+					userRejecting: payload.user,
+				},
+				tags: {
+					type: "take_reject_error",
+				},
+			});
+		}
 	});
 }
