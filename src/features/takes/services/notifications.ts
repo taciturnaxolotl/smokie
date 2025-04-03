@@ -4,6 +4,7 @@ import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 import { eq } from "drizzle-orm";
 import {
+	calculateElapsedTime,
 	getPausedDuration,
 	getRemainingTime,
 } from "../../../libs/time-periods";
@@ -68,11 +69,15 @@ export async function expirePausedSessions() {
 				);
 			}
 
+			// Calculate elapsed time
+			const elapsedTime = calculateElapsedTime(JSON.parse(take.periods));
+
 			await db
 				.update(takesTable)
 				.set({
 					status: "waitingUpload",
 					completedAt: now,
+					elapsedTimeMs: elapsedTime,
 					ts,
 					notes: take.notes
 						? `${take.notes} (Automatically completed due to pause timeout)`
@@ -134,11 +139,14 @@ export async function checkActiveSessions() {
 				);
 			}
 
+			const elapsedTime = calculateElapsedTime(JSON.parse(take.periods));
+
 			await db
 				.update(takesTable)
 				.set({
 					status: "waitingUpload",
 					completedAt: now,
+					elapsedTimeMs: take.targetDurationMs,
 					ts,
 					notes: take.notes
 						? `${take.notes} (Automatically completed - time expired)`

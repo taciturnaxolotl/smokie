@@ -121,8 +121,8 @@ export default async function upload() {
 					},
 					{
 						type: "video",
-						video_url: `${process.env.API_URL}/video/${take.id}`,
-						title_url: `${process.env.API_URL}/video/${take.id}`,
+						video_url: `${process.env.API_URL}/api/video/${take.id}`,
+						title_url: `${process.env.API_URL}/api/video/${take.id}`,
 						title: {
 							type: "plain_text",
 							text: `takes from ${takeUploadedAt?.toISOString()}`,

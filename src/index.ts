@@ -5,7 +5,7 @@ import * as features from "./features/index";
 import { t } from "./libs/template";
 import { blog } from "./libs/Logger";
 import { version, name } from "../package.json";
-import { video } from "./features/api";
+import { apiRouter, video } from "./features/api";
 const environment = process.env.NODE_ENV;
 
 import * as Sentry from "@sentry/bun";
@@ -71,8 +71,8 @@ export default {
 				return new Response("OK");
 			case "/slack":
 				return slackApp.run(request);
-			case "/video":
-				return video(url);
+			case "/api":
+				return apiRouter(url);
 			default:
 				return new Response("404 Not Found", { status: 404 });
 		}

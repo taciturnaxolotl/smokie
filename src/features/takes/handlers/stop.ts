@@ -5,10 +5,7 @@ import { eq } from "drizzle-orm";
 import { getActiveTake, getPausedTake } from "../services/database";
 import type { MessageResponse } from "../types";
 import { prettyPrintTime } from "../../../libs/time";
-import {
-	calculateElapsedTime,
-	getRemainingTime,
-} from "../../../libs/time-periods";
+import { calculateElapsedTime } from "../../../libs/time-periods";
 
 export default async function handleStop(
 	userId: string,
@@ -74,6 +71,7 @@ export default async function handleStop(
 				status: "waitingUpload",
 				ts: res.ts,
 				completedAt: new Date(),
+				elapsedTimeMs: elapsed,
 				...(notes && { notes }),
 			})
 			.where(eq(takesTable.id, pausedTakeToStop.id));
@@ -126,6 +124,7 @@ export default async function handleStop(
 				status: "waitingUpload",
 				ts: res.ts,
 				completedAt: new Date(),
+				elapsedTimeMs: elapsed,
 				...(notes && { notes }),
 			})
 			.where(eq(takesTable.id, activeTakeToStop.id));
