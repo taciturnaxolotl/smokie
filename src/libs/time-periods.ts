@@ -2,12 +2,15 @@ import type { PeriodType, TimePeriod } from "../features/takes/types";
 import TakesConfig from "./config";
 
 export function calculateElapsedTime(periods: TimePeriod[]): number {
-	return periods.reduce((total, period) => {
-		if (period.type !== "active") return total;
+	return Math.min(
+		periods.reduce((total, period) => {
+			if (period.type !== "active") return total;
 
-		const endTime = period.endTime || Date.now();
-		return total + (endTime - period.startTime);
-	}, 0);
+			const endTime = period.endTime || Date.now();
+			return total + (endTime - period.startTime);
+		}, 0),
+		TakesConfig.DEFAULT_SESSION_LENGTH * 60 * 1000,
+	);
 }
 
 export function addNewPeriod(
