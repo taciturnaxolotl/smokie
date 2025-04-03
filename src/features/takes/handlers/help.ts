@@ -3,7 +3,7 @@ import type { MessageResponse } from "../types";
 
 export default async function handleHelp(): Promise<MessageResponse> {
 	return {
-		text: `*Takes Commands*\n\n• \`/takes start [minutes]\` - Start a new takes session, optionally specifying duration\n• \`/takes pause\` - Pause your current session (max ${TakesConfig.MAX_PAUSE_DURATION} min)\n• \`/takes resume\` - Resume your paused session\n• \`/takes stop [notes]\` - End your current session with optional notes\n• \`/takes status\` - Check the status of your session\n• \`/takes history\` - View your past takes sessions`,
+		text: `*Takes Commands*\n\n• \`/takes start [description]\` - Start a new takes session, optionally specifying description\n• \`/takes pause\` - Pause your current session (max ${TakesConfig.MAX_PAUSE_DURATION} min)\n• \`/takes resume\` - Resume your paused session\n• \`/takes stop [notes]\` - End your current session with optional notes\n• \`/takes status\` - Check the status of your session\n• \`/takes history\` - View your past takes sessions`,
 		response_type: "ephemeral",
 		blocks: [
 			{

@@ -55,9 +55,28 @@ export default function setupCommands() {
 
 			// Route to the appropriate handler function
 			switch (subcommand) {
-				case "start":
-					response = await handleStart(userId, channelId);
+				case "start": {
+					if (args.length < 2) {
+						response = getDescriptionBlocks();
+						break;
+					}
+
+					const descriptionInput = args.slice(1).join(" ");
+
+					if (!descriptionInput.trim()) {
+						response = getDescriptionBlocks(
+							"Please enter a note for your session.",
+						);
+						break;
+					}
+
+					response = await handleStart(
+						userId,
+						channelId,
+						descriptionInput,
+					);
 					break;
+				}
 				case "pause":
 					response = await handlePause(userId);
 					break;
