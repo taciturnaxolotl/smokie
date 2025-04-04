@@ -4,6 +4,7 @@ import { blog } from "../../../libs/Logger";
 import { takes as takesTable } from "../../../libs/schema";
 import handleHelp from "../handlers/help";
 import { handleHistory } from "../handlers/history";
+import handleHome from "../handlers/home";
 import handlePause from "../handlers/pause";
 import handleResume from "../handlers/resume";
 import handleStart from "../handlers/start";
@@ -99,8 +100,14 @@ export default function setupActions() {
 				case "history":
 					response = await handleHistory(userId);
 					break;
-				default:
+				case "help":
 					response = await handleHelp();
+					break;
+				case "home":
+					response = await handleHome(userId);
+					break;
+				default:
+					response = await handleHome(userId);
 					break;
 			}
 

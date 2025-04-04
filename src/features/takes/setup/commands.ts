@@ -15,6 +15,7 @@ import type { MessageResponse } from "../types";
 import { getDescriptionBlocks, getEditDescriptionBlocks } from "../ui/blocks";
 import * as Sentry from "@sentry/bun";
 import { blog } from "../../../libs/Logger";
+import handleHome from "../handlers/home";
 
 export default function setupCommands() {
 	// Main command handler
@@ -45,8 +46,6 @@ export default function setupCommands() {
 					(activeTake.length > 0 || pausedTakeCheck.length > 0)
 				) {
 					subcommand = "status";
-				} else if (subcommand === "") {
-					subcommand = "help";
 				}
 
 				let response: MessageResponse | undefined;
@@ -104,7 +103,7 @@ export default function setupCommands() {
 						response = await handleHelp();
 						break;
 					default:
-						response = await handleHelp();
+						response = await handleHome(userId);
 						break;
 				}
 

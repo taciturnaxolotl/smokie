@@ -10,6 +10,9 @@ export const takes = sqliteTable("takes", {
 	targetDurationMs: integer("target_duration_ms").notNull(),
 	periods: text("periods").notNull(), // JSON string of time periods
 	lastResumeAt: integer("last_resume_at", { mode: "timestamp" }),
+	createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+		() => new Date(),
+	),
 	completedAt: integer("completed_at", { mode: "timestamp" }),
 	takeUploadedAt: integer("take_uploaded_at", { mode: "timestamp" }),
 	takeUrl: text("take_url"),
