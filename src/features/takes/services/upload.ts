@@ -2,7 +2,7 @@ import { slackApp, slackClient } from "../../../index";
 import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 import { eq, and } from "drizzle-orm";
-import { prettyPrintTime } from "../../../libs/time";
+import { generateSlackDate, prettyPrintTime } from "../../../libs/time";
 import * as Sentry from "@sentry/bun";
 
 export default async function upload() {
@@ -125,7 +125,7 @@ export default async function upload() {
 						title_url: `${process.env.API_URL}/api/video/${take.id}`,
 						title: {
 							type: "plain_text",
-							text: `takes from ${takeUploadedAt?.toLocaleString("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}`,
+							text: `take from ${generateSlackDate(takeUploadedAt)}`,
 						},
 						thumbnail_url: `https://cachet.dunkirk.sh/users/${payload.user}/r`,
 						alt_text: `takes from ${takeUploadedAt?.toLocaleString("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })} uploaded with the description: *${take.description}*`,
