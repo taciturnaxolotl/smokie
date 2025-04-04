@@ -125,7 +125,7 @@ export default async function upload() {
 						title_url: `${process.env.API_URL}/api/video/${take.id}`,
 						title: {
 							type: "plain_text",
-							text: `take from ${generateSlackDate(takeUploadedAt)}`,
+							text: `${take.description} by <@${user}> uploaded at ${generateSlackDate(takeUploadedAt)}`,
 						},
 						thumbnail_url: `https://cachet.dunkirk.sh/users/${payload.user}/r`,
 						alt_text: `takes from ${takeUploadedAt?.toLocaleString("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })} uploaded with the description: *${take.description}*`,
@@ -210,18 +210,6 @@ export default async function upload() {
 							},
 						],
 					},
-					{
-						type: "divider",
-					},
-					{
-						type: "context",
-						elements: [
-							{
-								type: "mrkdwn",
-								text: `take by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.description}*`,
-							},
-						],
-					},
 				],
 			});
 		} catch (error) {
@@ -246,11 +234,31 @@ export default async function upload() {
 	});
 
 	slackApp.action("select_multiplier", async () => {});
+	slackApp.action("dismiss_message", async ({ payload, context }) => {
+		try {
+			if (context.respond)
+				await context.respond({
+					delete_original: true,
+				});
+		} catch (error) {
+			console.error("Error dismissing message:", error);
+			Sentry.captureException(error, {
+				extra: {
+					payload,
+					context,
+				},
+				tags: {
+					type: "dismiss_message_error",
+				},
+			});
+		}
+	});
 
 	slackApp.action("approve", async ({ payload, context }) => {
 		try {
 			const multiplier = Object.values(payload.state.values)[0]
 				?.select_multiplier?.selected_option?.value;
+
 			// @ts-expect-error
 			const takeId = payload.actions[0]?.value;
 
@@ -261,8 +269,33 @@ export default async function upload() {
 			if (take.length === 0) {
 				return;
 			}
+
 			const takeToApprove = take[0];
 			if (!takeToApprove) return;
+
+			if (!multiplier || Number.isNaN(Number(multiplier))) {
+				await slackClient.chat.postEphemeral({
+					channel: process.env.SLACK_REVIEW_CHANNEL || "",
+					user: payload.user.id,
+					text: ":warning: please select a multiplier",
+					blocks: [
+						{
+							type: "actions",
+							elements: [
+								{
+									type: "button",
+									text: {
+										type: "plain_text",
+										text: "⚠️ I'll select a multiplier",
+									},
+									action_id: "dismiss_message",
+								},
+							],
+						},
+					],
+				});
+				return;
+			}
 
 			await db
 				.update(takesTable)
@@ -275,7 +308,7 @@ export default async function upload() {
 			await slackClient.chat.postMessage({
 				channel: payload.user.id,
 				thread_ts: take[0]?.ts as string,
-				text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeToApprove.elapsedTimeMs * Number(multiplier)) / 1000 / 60).toFixed(1)} takes*!`,
+				text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeToApprove.elapsedTimeMs * Number(multiplier)) / 1000 / 360).toFixed(1)} takes*!`,
 			});
 
 			// delete the message from the review channel
