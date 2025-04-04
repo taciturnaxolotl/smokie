@@ -183,7 +183,7 @@ export default async function upload() {
 											type: "plain_text",
 											text: "3x",
 										},
-										value: "2.5",
+										value: "3",
 									},
 								],
 								action_id: "select_multiplier",
@@ -308,7 +308,7 @@ export default async function upload() {
 			await slackClient.chat.postMessage({
 				channel: payload.user.id,
 				thread_ts: take[0]?.ts as string,
-				text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeToApprove.elapsedTimeMs * Number(multiplier)) / 1000 / 360).toFixed(1)} takes*!`,
+				text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeToApprove.elapsedTimeMs * Number(multiplier)) / 1000 / 3600).toFixed(1)} takes*!`,
 			});
 
 			// delete the message from the review channel
