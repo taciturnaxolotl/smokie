@@ -1,4 +1,4 @@
-# The Takes Project: Pioneered by Smokie (yes its spelled that way)
+# The Takes Project
 
 <img src="https://raw.githubusercontent.com/taciturnaxolotl/takes/main/.github/images/smokie.svg" height="175" align="right" alt="smokie the bear">
 
