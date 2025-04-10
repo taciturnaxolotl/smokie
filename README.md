@@ -1,6 +1,6 @@
-# The Takes Project
+# The Takes Project: Pioneered by Smokie (yes its spelled that way)
 
-<img src="https://raw.githubusercontent.com/taciturnaxolotl/takes/main/.github/images/smokey.svg" height="175" align="right" alt="smokey the bear">
+<img src="https://raw.githubusercontent.com/taciturnaxolotl/takes/main/.github/images/smokie.svg" height="175" align="right" alt="smokie the bear">
 
 > ### More deets coming soon 👀  
 > A slack bot that tracks takes and accepts uploads; developed with 💖 @ [Hack Club](https://github.com/hackclub)  

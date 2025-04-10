@@ -1,5 +1,5 @@
 display_information:
-    name: Smokey Dev
+    name: Smokie Dev
     description: Only you can complete your takes
     background_color: "#ce37ba"
 features:
@@ -8,7 +8,7 @@ features:
         messages_tab_enabled: true
         messages_tab_read_only_enabled: false
     bot_user:
-        display_name: smokey dev
+        display_name: smokie dev
         always_online: false
     slash_commands:
         - command: /takes-dev

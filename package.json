@@ -1,6 +1,6 @@
 {
 	"name": "takes",
-	"description": "smokey says hi!",
+	"description": "smokie says hi!",
 	"version": "0.0.3",
 	"module": "src/index.ts",
 	"type": "module",
