@@ -12,6 +12,7 @@ export default async function upload() {
 			if (
 				payload.subtype === "bot_message" ||
 				payload.subtype === "thread_broadcast" ||
+				payload.thread_ts ||
 				payload.channel !== process.env.SLACK_LISTEN_CHANNEL
 			)
 				return;
@@ -136,7 +137,7 @@ export default async function upload() {
 				ts: payload.ts,
 				notes: markdownText,
 				media: JSON.stringify(mediaUrls),
-				elapsedTimeMs: timeSpentMs,
+				elapsedTime: timeSpentMs / 1000,
 			});
 
 			await slackClient.reactions.add({

@@ -46,9 +46,7 @@ export async function handleSettings(
 					project_description: existingUser.projectDescription,
 					repo_link: existingUser.repoLink || undefined,
 					demo_link: existingUser.demoLink || undefined,
-					hackatime_version: getHackatimeVersion(
-						existingUser.hackatimeBaseAPI,
-					),
+					hackatime_version: existingUser.hackatimeVersion,
 				};
 			}
 		} catch (error) {
@@ -233,7 +231,7 @@ export async function setupSubmitListener() {
 					demoLink: values.project_link?.demo_link?.value as
 						| string
 						| undefined,
-					hackatimeBaseAPI: getHackatimeApiUrl(hackatimeVersion),
+					hackatimeVersion,
 				})
 				.onConflictDoUpdate({
 					target: usersTable.id,
@@ -249,7 +247,7 @@ export async function setupSubmitListener() {
 						demoLink: values.demo_link?.demo_link_input?.value as
 							| string
 							| undefined,
-						hackatimeBaseAPI: getHackatimeApiUrl(hackatimeVersion),
+						hackatimeVersion,
 					},
 				});
 		} catch (error) {

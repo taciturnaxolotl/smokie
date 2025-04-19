@@ -47,7 +47,9 @@ export function Projects() {
 							<div className="project-meta">
 								<span>
 									Total Time:{" "}
-									{prettyPrintTime(project.totalTakesTime)}
+									{prettyPrintTime(
+										project.totalTakesTime * 1000,
+									)}
 								</span>
 							</div>
 						</Link>

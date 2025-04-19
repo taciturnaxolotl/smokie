@@ -145,7 +145,9 @@ export function ProjectTakes() {
 										Duration:
 									</span>
 									<span className="meta-value">
-										{prettyPrintTime(take.elapsedTimeMs)}
+										{prettyPrintTime(
+											take.elapsedTime * 1000,
+										)}
 									</span>
 								</div>
 							</div>

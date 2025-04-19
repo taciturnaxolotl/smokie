@@ -13,7 +13,7 @@ export async function handleHistory(userId: string): Promise<MessageResponse> {
 		.orderBy(desc(takesTable.createdAt));
 
 	const takeTimeMs = takes.reduce(
-		(acc, take) => acc + take.elapsedTimeMs * Number(take.multiplier),
+		(acc, take) => acc + take.elapsedTime * 1000 * Number(take.multiplier),
 		0,
 	);
 	const takeTime = prettyPrintTime(takeTimeMs);
@@ -32,7 +32,7 @@ export async function handleHistory(userId: string): Promise<MessageResponse> {
 
 	for (const take of takes) {
 		const notes = take.notes ? `\n• Notes: ${take.notes}` : "";
-		const duration = prettyPrintTime(take.elapsedTimeMs);
+		const duration = prettyPrintTime(take.elapsedTime * 1000);
 
 		historyBlocks.push({
 			type: "section",

@@ -7,6 +7,7 @@ export type Project = {
 	projectName: string;
 	projectDescription: string;
 	projectBannerUrl: string;
+	/** Total time spent on takes, in seconds */
 	totalTakesTime: number;
 	userId: string;
 };

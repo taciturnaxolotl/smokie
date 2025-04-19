@@ -1,4 +1,4 @@
-import { eq, desc, and, or } from "drizzle-orm";
+import { eq, desc, or } from "drizzle-orm";
 import { db } from "../../../libs/db";
 import { takes as takesTable, users as usersTable } from "../../../libs/schema";
 import { handleApiError } from "../../../libs/apiError";
@@ -9,8 +9,10 @@ export type RecentTake = {
 	notes: string;
 	createdAt: Date;
 	mediaUrls: string[];
-	elapsedTimeMs: number;
+	/* elapsed time in seconds */
+	elapsedTime: number;
 	project: string;
+	/* total time in seconds */
 	totalTakesTime: number;
 };
 
@@ -87,10 +89,10 @@ export async function recentTakes(url: URL): Promise<Response> {
 				notes: take.notes,
 				createdAt: new Date(take.createdAt),
 				mediaUrls: take.media ? JSON.parse(take.media) : [],
-				elapsedTimeMs: take.elapsedTimeMs,
+				elapsedTime: take.elapsedTime,
 				project: userMap[take.userId]?.projectName || "unknown project",
 				totalTakesTime:
-					userMap[take.userId]?.totalTakesTime || take.elapsedTimeMs,
+					userMap[take.userId]?.totalTakesTime || take.elapsedTime,
 			})) || [];
 
 		return new Response(
