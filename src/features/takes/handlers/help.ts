@@ -36,6 +36,16 @@ export default async function handleHelp(): Promise<MessageResponse> {
 						type: "button",
 						text: {
 							type: "plain_text",
+							text: "⚙️ Settings",
+							emoji: true,
+						},
+						value: "settings",
+						action_id: "takes_settings",
+					},
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
 							text: "📋 History",
 							emoji: true,
 						},

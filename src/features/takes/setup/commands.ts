@@ -8,12 +8,13 @@ import handleHome from "../handlers/home";
 import { db } from "../../../libs/db";
 import { users as usersTable } from "../../../libs/schema";
 import { eq } from "drizzle-orm";
-import { handleSetup } from "../handlers/setup";
+import { handleSettings } from "../handlers/settings";
 
 export default function setupCommands() {
 	// Main command handler
 	slackApp.command(
 		environment === "dev" ? "/takes-dev" : "/takes",
+		async () => Promise.resolve(),
 		async ({ payload, context }): Promise<void> => {
 			try {
 				const userId = payload.user_id;
@@ -30,7 +31,7 @@ export default function setupCommands() {
 					.where(eq(usersTable.id, userId));
 
 				if (userFromDB.length === 0) {
-					await handleSetup(context.triggerId as string);
+					await handleSettings(context.triggerId as string, userId);
 					return;
 				}
 
@@ -42,6 +43,13 @@ export default function setupCommands() {
 					case "help":
 						response = await handleHelp();
 						break;
+					case "settings":
+						await handleSettings(
+							context.triggerId as string,
+							userId,
+							true,
+						);
+						return;
 					default:
 						response = await handleHome(userId);
 						break;

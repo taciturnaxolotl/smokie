@@ -16,13 +16,19 @@ export const takes = pgTable("takes", {
 });
 
 export const users = pgTable("users", {
-	id: text("id").primaryKey(),
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => Bun.randomUUIDv7()),
 	totalTakesTime: integer("total_takes_time").default(0).notNull(),
 	hackatimeKeys: text("hackatime_keys").notNull().default("[]"),
 	projectName: text("project_name").notNull().default(""),
 	projectDescription: text("project_description").notNull().default(""),
 	projectBannerUrl: text("project_banner_url").notNull().default(""),
-	usingHackatimeV2: boolean().notNull().default(true),
+	hackatimeBaseAPI: text("hackatime_base_api")
+		.notNull()
+		.default("https://hackatime.hackclub.com/api"),
+	repoLink: text("repo_link"),
+	demoLink: text("demo_link"),
 });
 
 export async function setupTriggers(pool: Pool) {

@@ -1,23 +1,20 @@
 import type { MessageResponse } from "../types";
 import { db } from "../../../libs/db";
-import { takes as takesTable } from "../../../libs/schema";
+import { takes as takesTable, users as usersTable } from "../../../libs/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { prettyPrintTime } from "../../../libs/time";
 
 export default async function handleHome(
 	userId: string,
 ): Promise<MessageResponse> {
-	const takes = await db
-		.select()
-		.from(takesTable)
-		.where(and(eq(takesTable.userId, userId)))
-		.orderBy(desc(takesTable.createdAt));
+	const userFromDB = (
+		await db
+			.select({ totalTakesTime: usersTable.totalTakesTime })
+			.from(usersTable)
+			.where(eq(usersTable.id, userId))
+	)[0];
 
-	const takeTimeMs = takes.reduce(
-		(acc, take) => acc + take.elapsedTimeMs * Number(take.multiplier),
-		0,
-	);
-	const takeTime = prettyPrintTime(takeTimeMs);
+	const takeTime = prettyPrintTime(userFromDB?.totalTakesTime || 0);
 
 	return {
 		text: `You have logged ${takeTime} of takes!`,
@@ -49,6 +46,16 @@ export default async function handleHome(
 						},
 						value: "history",
 						action_id: "takes_history",
+					},
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "⚙️ Settings",
+							emoji: true,
+						},
+						value: "settings",
+						action_id: "takes_settings",
 					},
 					{
 						type: "button",

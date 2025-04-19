@@ -25,7 +25,38 @@ export default async function upload() {
 				await slackClient.chat.postMessage({
 					channel: payload.channel,
 					thread_ts: payload.ts,
-					text: "we don't have a project for you; set one up in the web ui or by running `/takes`",
+					text: "We don't have a project for you; set one up by clicking the button below or by running `/takes`",
+					blocks: [
+						{
+							type: "section",
+							text: {
+								type: "mrkdwn",
+								text: "We don't have a project for you; set one up by clicking the button below or by running `/takes`",
+							},
+						},
+						{
+							type: "actions",
+							elements: [
+								{
+									type: "button",
+									text: {
+										type: "plain_text",
+										text: "setup your project",
+									},
+									action_id: "takes_setup",
+								},
+							],
+						},
+						{
+							type: "context",
+							elements: [
+								{
+									type: "plain_text",
+									text: "don't forget to resend your update after setting up your project!",
+								},
+							],
+						},
+					],
 				});
 				return;
 			}
@@ -100,7 +131,7 @@ export default async function upload() {
 			const timeSpentMs = 60000;
 
 			await db.insert(takesTable).values({
-				id: payload.ts,
+				id: Bun.randomUUIDv7(),
 				userId: user,
 				ts: payload.ts,
 				notes: markdownText,
@@ -123,7 +154,7 @@ export default async function upload() {
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: `:inbox_tray: saved! ${mediaUrls.length > 0 ? "uploaded media and " : ""}saved your notes`,
+							text: `:inbox_tray: ${mediaUrls.length > 0 ? "uploaded media and " : ""}saved your notes!`,
 						},
 					},
 				],

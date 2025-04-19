@@ -68,6 +68,16 @@ export async function handleHistory(userId: string): Promise<MessageResponse> {
 				type: "button",
 				text: {
 					type: "plain_text",
+					text: "⚙️ Settings",
+					emoji: true,
+				},
+				value: "settings",
+				action_id: "takes_settings",
+			},
+			{
+				type: "button",
+				text: {
+					type: "plain_text",
 					text: "🔄 Refresh",
 					emoji: true,
 				},
