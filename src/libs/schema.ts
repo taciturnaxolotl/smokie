@@ -1,4 +1,4 @@
-import { pgTable, text, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean } from "drizzle-orm/pg-core";
 import type { Pool } from "pg";
 
 // Define the takes table
@@ -21,6 +21,7 @@ export const users = pgTable("users", {
 	hackatimeKeys: text("hackatime_keys").notNull().default("[]"),
 	projectName: text("project_name").notNull().default(""),
 	projectDescription: text("project_description").notNull().default(""),
+	usingHackatimeV2: boolean().notNull().default(true),
 });
 
 export async function setupTriggers(pool: Pool) {

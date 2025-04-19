@@ -1,6 +1,6 @@
 import { eq, desc, and, or } from "drizzle-orm";
 import { db } from "../../../libs/db";
-import { takes as takesTable } from "../../../libs/schema";
+import { takes as takesTable, users as usersTable } from "../../../libs/schema";
 import { handleApiError } from "../../../libs/apiError";
 
 export type RecentTake = {
@@ -10,20 +10,44 @@ export type RecentTake = {
 	createdAt: Date;
 	mediaUrls: string[];
 	elapsedTimeMs: number;
+	project: string;
+	totalTakesTime: number;
 };
 
 export async function recentTakes(url: URL): Promise<Response> {
 	try {
 		const userId = url.searchParams.get("user");
 
-		const query = db
+		if (userId) {
+			// Verify user exists if userId provided
+			const user = await db
+				.select()
+				.from(usersTable)
+				.where(eq(usersTable.id, userId))
+				.limit(1);
+
+			if (user.length === 0) {
+				return new Response(
+					JSON.stringify({
+						error: "User not found",
+						takes: [],
+					}),
+					{
+						status: 404,
+						headers: {
+							"Content-Type": "application/json",
+						},
+					},
+				);
+			}
+		}
+
+		const recentTakes = await db
 			.select()
 			.from(takesTable)
 			.orderBy(desc(takesTable.createdAt))
 			.where(eq(takesTable.userId, userId ? userId : takesTable.userId))
 			.limit(40);
-
-		const recentTakes = await query;
 
 		if (recentTakes.length === 0) {
 			return new Response(
@@ -38,6 +62,24 @@ export async function recentTakes(url: URL): Promise<Response> {
 			);
 		}
 
+		// Get unique user IDs
+		const userIds = [...new Set(recentTakes.map((take) => take.userId))];
+
+		// Query users from takes table
+		const users = await db
+			.select()
+			.from(usersTable)
+			.where(or(...userIds.map((id) => eq(usersTable.id, id))));
+
+		// Create map of user data by ID
+		const userMap = users.reduce(
+			(acc, user) => {
+				acc[user.id] = user;
+				return acc;
+			},
+			{} as Record<string, (typeof users)[number]>,
+		);
+
 		const takes: RecentTake[] =
 			recentTakes.map((take) => ({
 				id: take.id,
@@ -46,6 +88,9 @@ export async function recentTakes(url: URL): Promise<Response> {
 				createdAt: new Date(take.createdAt),
 				mediaUrls: take.media ? JSON.parse(take.media) : [],
 				elapsedTimeMs: take.elapsedTimeMs,
+				project: userMap[take.userId]?.projectName || "unknown project",
+				totalTakesTime:
+					userMap[take.userId]?.totalTakesTime || take.elapsedTimeMs,
 			})) || [];
 
 		return new Response(

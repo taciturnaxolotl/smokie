@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
 import { slackApp, slackClient } from "../../../index";
 import { db } from "../../../libs/db";
-import { takes as takesTable } from "../../../libs/schema";
+import { takes as takesTable, users as usersTable } from "../../../libs/schema";
 import * as Sentry from "@sentry/bun";
 
 export default async function upload() {
@@ -14,6 +15,20 @@ export default async function upload() {
 				payload.channel !== process.env.SLACK_LISTEN_CHANNEL
 			)
 				return;
+
+			const userInDB = await db
+				.select()
+				.from(usersTable)
+				.where(eq(usersTable.id, user));
+
+			if (userInDB.length === 0) {
+				await slackClient.chat.postMessage({
+					channel: payload.channel,
+					thread_ts: payload.ts,
+					text: "we don't have a project for you; set one up in the web ui or by running `/takes`",
+				});
+				return;
+			}
 
 			// Convert Slack formatting to markdown
 			const replaceUserMentions = async (text: string) => {

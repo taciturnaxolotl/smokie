@@ -34,11 +34,17 @@ export function App() {
 
 	useEffect(() => {
 		async function getTakes() {
-			const res = await fetch("/api/recentTakes");
-			const data = await res.json();
-
-			console.log(data);
-			setTakes(data.takes);
+			try {
+				const res = await fetch("/api/recentTakes");
+				if (!res.ok) {
+					throw new Error(`HTTP error! status: ${res.status}`);
+				}
+				const data = await res.json();
+				setTakes(data.takes);
+			} catch (error) {
+				console.error("Error fetching takes:", error);
+				setTakes([]);
+			}
 		}
 		getTakes();
 	}, []);
@@ -53,91 +59,107 @@ export function App() {
 	return (
 		<div className="container">
 			<h1 className="title">Recent Takes</h1>
-			<Masonry
-				breakpointCols={breakpointColumns}
-				className="takes-grid"
-				columnClassName="takes-grid-column"
-			>
-				{takes.map((take) => (
-					<div key={take.id} className="take-card">
-						<div className="take-header">
-							<h2 className="take-title">{take.notes}</h2>
-							<div className="user-pill">
-								<div className="user-info">
-									<img
-										src={userData[take.userId]?.imageUrl}
-										alt="Profile"
-										className="profile-image"
-									/>
-									<span className="user-name">
-										{userData[take.userId]?.displayName ??
-											take.userId}
+			{takes.length === 0 ? (
+				<div className="no-takes-message">No takes found</div>
+			) : (
+				<Masonry
+					breakpointCols={breakpointColumns}
+					className="takes-grid"
+					columnClassName="takes-grid-column"
+				>
+					{takes.map((take) => (
+						<div key={take.id} className="take-card">
+							<div className="take-header">
+								<h2 className="take-title">{take.project}</h2>
+								<div className="user-pill">
+									<div className="user-info">
+										<img
+											src={
+												userData[take.userId]?.imageUrl
+											}
+											alt="Profile"
+											className="profile-image"
+										/>
+										<span className="user-name">
+											{userData[take.userId]
+												?.displayName ?? take.userId}
+										</span>
+									</div>
+								</div>
+							</div>
+
+							<div className="take-meta">
+								<div className="meta-item">
+									<span className="meta-label">
+										Completed:
+									</span>
+									<span className="meta-value">
+										{new Date(
+											take.createdAt,
+										).toLocaleString()}
+									</span>
+								</div>
+								<div className="meta-item">
+									<span className="meta-label">
+										Duration:
+									</span>
+									<span className="meta-value">
+										{prettyPrintTime(take.elapsedTimeMs)}
 									</span>
 								</div>
 							</div>
-						</div>
 
-						<div className="take-meta">
-							<div className="meta-item">
-								<span className="meta-label">Completed:</span>
-								<span className="meta-value">
-									{new Date(take.createdAt).toLocaleString()}
-								</span>
-							</div>
-							<div className="meta-item">
-								<span className="meta-label">Duration:</span>
-								<span className="meta-value">
-									{prettyPrintTime(take.elapsedTimeMs)}
-								</span>
-							</div>
-						</div>
+							{take.mediaUrls?.map(
+								(url: string, index: number) => {
+									// More robust video detection for Slack-style URLs
+									const isVideo =
+										/\.(mp4|mov|webm|ogg)/i.test(url) ||
+										(url.includes("files.slack.com") &&
+											url.includes("download"));
+									const contentType = isVideo
+										? "video"
+										: "image";
 
-						{take.mediaUrls?.map((url: string, index: number) => {
-							// More robust video detection for Slack-style URLs
-							const isVideo =
-								/\.(mp4|mov|webm|ogg)/i.test(url) ||
-								(url.includes("files.slack.com") &&
-									url.includes("download"));
-							const contentType = isVideo ? "video" : "image";
-
-							return (
-								<div
-									key={`media-${take.id}-${index}`}
-									className={`${contentType}-container`}
-								>
-									{isVideo ? (
-										<video
-											controls
-											className="take-video"
-											preload="metadata"
-											playsInline
+									return (
+										<div
+											key={`media-${take.id}-${index}`}
+											className={`${contentType}-container`}
 										>
-											<source
-												src={url}
-												type="video/mp4"
-											/>
-											<track
-												kind="captions"
-												src=""
-												label="Captions"
-											/>
-											Your browser does not support the
-											video tag.
-										</video>
-									) : (
-										<img
-											src={url}
-											alt={`Media content ${index + 1}`}
-											className="take-image"
-											loading="lazy"
-										/>
-									)}
-								</div>
-							);
-						})}
-					</div>
-				))}
-			</Masonry>
+											{isVideo ? (
+												<video
+													controls
+													className="take-video"
+													preload="metadata"
+													playsInline
+												>
+													<source
+														src={url}
+														type="video/mp4"
+													/>
+													<track
+														kind="captions"
+														src=""
+														label="Captions"
+													/>
+													Your browser does not
+													support the video tag.
+												</video>
+											) : (
+												<img
+													src={url}
+													alt={`Media content ${index + 1}`}
+													className="take-image"
+													loading="lazy"
+												/>
+											)}
+										</div>
+									);
+								},
+							)}
+						</div>
+					))}
+				</Masonry>
+			)}
 		</div>
 	);
 }

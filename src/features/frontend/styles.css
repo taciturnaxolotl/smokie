@@ -14,6 +14,18 @@ body {
 	max-width: 1200px;
 	margin: 0 auto;
 	padding: 2rem;
+	/* Add these properties for vertical centering when there are no takes */
+	min-height: calc(100vh - 40px); /* 40px accounts for the body padding */
+	display: flex;
+	flex-direction: column;
+}
+
+.no-takes-message {
+	text-align: center;
+	font-size: 1.5rem;
+	padding: 2rem;
+	margin: auto; /* This will center vertically when parent is flex */
+	max-width: 600px;
 }
 
 .title {
