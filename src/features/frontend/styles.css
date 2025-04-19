@@ -78,6 +78,11 @@ body {
 	color: #1e7e34;
 }
 
+.status-uploaded {
+	background: #fff8c1;
+	color: #f2a30a;
+}
+
 .take-meta {
 	margin-bottom: 1rem;
 }
