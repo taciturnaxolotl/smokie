@@ -1,4 +1,4 @@
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 import { handleApiError } from "../../../libs/apiError";
@@ -8,7 +8,12 @@ export async function recentTakes(): Promise<Response> {
 		const recentTakes = await db
 			.select()
 			.from(takesTable)
-			.where(eq(takesTable.status, "approved"))
+			.where(
+				or(
+					eq(takesTable.status, "approved"),
+					eq(takesTable.status, "uploaded"),
+				),
+			)
 			.orderBy(desc(takesTable.completedAt))
 			.limit(40);
 

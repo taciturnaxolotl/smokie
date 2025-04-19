@@ -1,6 +1,7 @@
 import { SlackApp } from "slack-edge";
 
 import { takes } from "./features/index";
+import frontend from "../public/index.html";
 
 import { t } from "./libs/template";
 import { blog } from "./libs/Logger";
@@ -56,9 +57,9 @@ takes();
 
 Bun.serve({
 	port: process.env.PORT || 3000,
-	development: environment === "development",
+	development: environment === "dev",
 	routes: {
-		"/": new Response(`Hello World from ${name}@${version}`),
+		"/": frontend,
 		"/health": new Response("OK"),
 	},
 	async fetch(request: Request) {
