@@ -10,6 +10,7 @@ import {
 	HACKATIME_VERSIONS,
 	type HackatimeVersion,
 } from "../../../libs/hackatime";
+import { deployToHackClubCDN } from "../../../libs/cdn";
 
 export async function handleSettings(
 	triggerID: string,
@@ -192,25 +193,14 @@ export async function setupSubmitListener() {
 		const values = payload.view.state.values;
 		const userId = body.user.id;
 
-		const file = values.project_banner?.project_banner_input
-			?.files?.[0] as UploadedFile;
+		const file = [
+			values.project_banner?.project_banner_input?.files?.[0]
+				?.url_private_download as string,
+		];
 		try {
-			// If file is already public, use it directly
-			const fileData = file.is_public
-				? file
-				: (
-						await slackClient.files.sharedPublicURL({
-							file: file.id,
-							token: process.env.SLACK_USER_TOKEN,
-						})
-					).file;
-
-			const html = await (
-				await fetch(fileData?.permalink_public as string)
-			).text();
-			const projectBannerUrl = html.match(
-				/https:\/\/files.slack.com\/files-pri\/[^"]+pub_secret=([^"&]*)/,
-			)?.[0];
+			const projectBannerUrl = await deployToHackClubCDN(file).then(
+				(res) => res.files[0]?.deployedUrl,
+			);
 
 			const hackatimeVersion = values.hackatime_version
 				?.hackatime_version_input?.selected_option

@@ -36,6 +36,7 @@ SLACK_USER_TOKEN="xoxp-xxxxx-xxxxx-xxxxx-xxxxx"
 API_URL="https://casual-renewing-reptile.ngrok-free.app"
 SENTRY_DSN="https://xxxxxx@xxxxxx.ingest.us.sentry.io/xxxx"
 DATABASE_URL="postgres://username:password@host:5432/smokie"
+CDN_TOKEN="cdn_token"
 ```
 
 ## 📜 License
