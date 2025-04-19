@@ -3,19 +3,27 @@ import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
 import { handleApiError } from "../../../libs/apiError";
 
-export async function recentTakes(): Promise<Response> {
+export type RecentTake = {
+	id: string;
+	userId: string;
+	notes: string;
+	createdAt: Date;
+	mediaUrls: string[];
+	elapsedTimeMs: number;
+};
+
+export async function recentTakes(url: URL): Promise<Response> {
 	try {
-		const recentTakes = await db
+		const userId = url.searchParams.get("user");
+
+		const query = db
 			.select()
 			.from(takesTable)
-			.where(
-				or(
-					eq(takesTable.status, "approved"),
-					eq(takesTable.status, "uploaded"),
-				),
-			)
-			.orderBy(desc(takesTable.completedAt))
+			.orderBy(desc(takesTable.createdAt))
+			.where(eq(takesTable.userId, userId ? userId : takesTable.userId))
 			.limit(40);
+
+		const recentTakes = await query;
 
 		if (recentTakes.length === 0) {
 			return new Response(
@@ -30,15 +38,15 @@ export async function recentTakes(): Promise<Response> {
 			);
 		}
 
-		const takes = recentTakes.map((take) => ({
-			id: take.id,
-			userId: take.userId,
-			description: take.description,
-			completedAt: take.completedAt,
-			status: take.status,
-			mp4Url: take.takeUrl,
-			elapsedTime: take.elapsedTimeMs,
-		}));
+		const takes: RecentTake[] =
+			recentTakes.map((take) => ({
+				id: take.id,
+				userId: take.userId,
+				notes: take.notes,
+				createdAt: new Date(take.createdAt),
+				mediaUrls: take.media ? JSON.parse(take.media) : [],
+				elapsedTimeMs: take.elapsedTimeMs,
+			})) || [];
 
 		return new Response(
 			JSON.stringify({
@@ -52,74 +60,5 @@ export async function recentTakes(): Promise<Response> {
 		);
 	} catch (error) {
 		return handleApiError(error, "recentTakes");
-	}
-}
-
-export async function takesPerUser(userId: string): Promise<Response> {
-	try {
-		const rawTakes = await db
-			.select()
-			.from(takesTable)
-			.where(and(eq(takesTable.userId, userId)))
-			.orderBy(desc(takesTable.completedAt));
-
-		const takes = rawTakes.map((take) => ({
-			id: take.id,
-			description: take.description,
-			completedAt: take.completedAt,
-			status: take.status,
-			mp4Url: take.takeUrl,
-			elapsedTime: take.elapsedTimeMs,
-		}));
-
-		const approvedTakes = rawTakes.reduce((acc, take) => {
-			if (take.status !== "approved") return acc;
-			const multiplier = Number.parseFloat(take.multiplier || "1.0");
-			return Number(
-				(
-					acc +
-					(take.elapsedTimeMs * multiplier) / (1000 * 60 * 60)
-				).toFixed(1),
-			);
-		}, 0);
-
-		const waitingTakes = rawTakes.reduce((acc, take) => {
-			if (take.status !== "waitingUpload" && take.status !== "uploaded")
-				return acc;
-			const multiplier = Number.parseFloat(take.multiplier || "1.0");
-			return Number(
-				(
-					acc +
-					(take.elapsedTimeMs * multiplier) / (1000 * 60 * 60)
-				).toFixed(1),
-			);
-		}, 0);
-
-		const rejectedTakes = rawTakes.reduce((acc, take) => {
-			if (take.status !== "rejected") return acc;
-			const multiplier = Number.parseFloat(take.multiplier || "1.0");
-			return Number(
-				(
-					acc +
-					(take.elapsedTimeMs * multiplier) / (1000 * 60 * 60)
-				).toFixed(1),
-			);
-		}, 0);
-
-		return new Response(
-			JSON.stringify({
-				approvedTakes,
-				waitingTakes,
-				rejectedTakes,
-				takes,
-			}),
-			{
-				headers: {
-					"Content-Type": "application/json",
-				},
-			},
-		);
-	} catch (error) {
-		return handleApiError(error, "takesPerUser");
 	}
 }

@@ -1,4 +1,4 @@
-import { recentTakes, takesPerUser } from "./routes/recentTakes";
+import { recentTakes } from "./routes/recentTakes";
 import video from "./routes/video";
 import { handleApiError } from "../../libs/apiError";
 
@@ -12,9 +12,7 @@ export async function apiRouter(url: URL) {
 			case "video":
 				return await video(url);
 			case "recentTakes":
-				return await recentTakes();
-			case "takesPerUser":
-				return await takesPerUser(url.pathname.split("/")[3] as string);
+				return await recentTakes(url);
 			default:
 				return new Response(
 					JSON.stringify({ error: "Route not found" }),

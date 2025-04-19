@@ -1,25 +1,22 @@
 import type { AnyMessageBlock } from "slack-edge";
-import TakesConfig from "../../../libs/config";
-import { getCompletedTakes } from "../services/database";
 import type { MessageResponse } from "../types";
-import { calculateElapsedTime } from "../../../libs/time-periods";
 import { prettyPrintTime } from "../../../libs/time";
+import { db } from "../../../libs/db";
+import { takes as takesTable } from "../../../libs/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 export async function handleHistory(userId: string): Promise<MessageResponse> {
-	// Get completed takes for the user
-	const completedTakes = (
-		await getCompletedTakes(userId, TakesConfig.MAX_HISTORY_ITEMS)
-	).sort(
-		(a, b) =>
-			(b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0),
-	);
+	const takes = await db
+		.select()
+		.from(takesTable)
+		.where(and(eq(takesTable.userId, userId)))
+		.orderBy(desc(takesTable.createdAt));
 
-	if (completedTakes.length === 0) {
-		return {
-			text: "You haven't completed any takes sessions yet.",
-			response_type: "ephemeral",
-		};
-	}
+	const takeTimeMs = takes.reduce(
+		(acc, take) => acc + take.elapsedTimeMs * Number(take.multiplier),
+		0,
+	);
+	const takeTime = prettyPrintTime(takeTimeMs);
 
 	// Create blocks for each completed take
 	const historyBlocks: AnyMessageBlock[] = [
@@ -27,30 +24,26 @@ export async function handleHistory(userId: string): Promise<MessageResponse> {
 			type: "header",
 			text: {
 				type: "plain_text",
-				text: `📋 Your most recent ${completedTakes.length} Takes sessions`,
+				text: `📋 you have uploaded ${takes.length} notes for a total of ${takeTime}`,
 				emoji: true,
 			},
 		},
 	];
 
-	for (const take of completedTakes) {
-		const elapsedTime = calculateElapsedTime(JSON.parse(take.periods));
-
+	for (const take of takes) {
 		const notes = take.notes ? `\n• Notes: ${take.notes}` : "";
-		const description = take.description
-			? `\n• Description: ${take.description}\n`
-			: "";
+		const duration = prettyPrintTime(take.elapsedTimeMs);
 
 		historyBlocks.push({
 			type: "section",
 			text: {
 				type: "mrkdwn",
-				text: `*Duration:* \`${prettyPrintTime(elapsedTime)}\`\n*Status:* ${take.status}\n${notes ? `*Notes:* ${take.notes}\n` : ""}${description ? `*Description:* ${take.description}\n` : ""}`,
+				text: `*Duration:* \`${duration}\`\n${notes ? `*Notes:* ${take.notes}\n` : ""}${take.multiplier !== "1.0" ? `\n*Multiplier:* ${take.multiplier}\n` : ""}`,
 			},
 		});
 
 		// Add a divider between entries
-		if (take !== completedTakes[completedTakes.length - 1]) {
+		if (take !== takes[takes.length - 1]) {
 			historyBlocks.push({
 				type: "divider",
 			});
@@ -65,21 +58,11 @@ export async function handleHistory(userId: string): Promise<MessageResponse> {
 				type: "button",
 				text: {
 					type: "plain_text",
-					text: "🎬 Start New Session",
-					emoji: true,
-				},
-				value: "start",
-				action_id: "takes_start",
-			},
-			{
-				type: "button",
-				text: {
-					type: "plain_text",
-					text: "👁️ Status",
+					text: "🏡 Home",
 					emoji: true,
 				},
 				value: "status",
-				action_id: "takes_status",
+				action_id: "takes_home",
 			},
 			{
 				type: "button",
@@ -95,7 +78,7 @@ export async function handleHistory(userId: string): Promise<MessageResponse> {
 	});
 
 	return {
-		text: `Your recent takes history (${completedTakes.length} sessions)`,
+		text: `${takes.length} notes for a total of ${takeTime}`,
 		response_type: "ephemeral",
 		blocks: historyBlocks,
 	};

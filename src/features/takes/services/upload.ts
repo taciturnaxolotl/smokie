@@ -22,7 +22,7 @@ export default async function upload() {
 					and(
 						eq(takesTable.userId, payload.user as string),
 						eq(takesTable.ts, payload.thread_ts as string),
-						eq(takesTable.status, "waitingUpload"),
+						eq(takesTable.media, "[]"),
 					),
 				);
 
@@ -66,9 +66,7 @@ export default async function upload() {
 			await db
 				.update(takesTable)
 				.set({
-					status: "uploaded",
-					takeUploadedAt,
-					takeUrl: takePublicUrl,
+					media: JSON.stringify([takePublicUrl]),
 				})
 				.where(eq(takesTable.id, take.id));
 
@@ -98,7 +96,7 @@ export default async function upload() {
 						elements: [
 							{
 								type: "mrkdwn",
-								text: `take by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.description}*`,
+								text: `take by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.notes}*`,
 							},
 						],
 					},
@@ -113,7 +111,7 @@ export default async function upload() {
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: `:video_camera: new take uploaded by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.description}*`,
+							text: `:video_camera: new take uploaded by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.notes}*`,
 						},
 					},
 					{
@@ -121,14 +119,14 @@ export default async function upload() {
 					},
 					{
 						type: "video",
-						video_url: `${process.env.API_URL}/api/video/${take.id}`,
-						title_url: `${process.env.API_URL}/api/video/${take.id}`,
+						video_url: `${process.env.API_URL}/api/video/?media=${take.media[0]}`,
+						title_url: `${process.env.API_URL}/api/video/?media=${take.media[0]}`,
 						title: {
 							type: "plain_text",
-							text: `${take.description} by <@${user}> uploaded at ${generateSlackDate(takeUploadedAt)}`,
+							text: `${take.notes} by <@${user}> uploaded at ${generateSlackDate(takeUploadedAt)}`,
 						},
 						thumbnail_url: `https://cachet.dunkirk.sh/users/${payload.user}/r`,
-						alt_text: `takes from ${takeUploadedAt?.toLocaleString("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })} uploaded with the description: *${take.description}*`,
+						alt_text: `takes from ${takeUploadedAt?.toLocaleString("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })} uploaded with the description: *${take.notes}*`,
 					},
 					{
 						type: "divider",
@@ -300,7 +298,6 @@ export default async function upload() {
 			await db
 				.update(takesTable)
 				.set({
-					status: "approved",
 					multiplier: multiplier,
 				})
 				.where(eq(takesTable.id, takeId));
@@ -353,7 +350,6 @@ export default async function upload() {
 			await db
 				.update(takesTable)
 				.set({
-					status: "rejected",
 					multiplier: "0",
 				})
 				.where(eq(takesTable.id, takeId));

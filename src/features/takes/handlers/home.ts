@@ -13,31 +13,14 @@ export default async function handleHome(
 		.where(and(eq(takesTable.userId, userId)))
 		.orderBy(desc(takesTable.createdAt));
 
-	const approvedTakes = takes.reduce((acc, take) => {
-		if (take.status !== "approved") return acc;
-		const multiplier = Number.parseFloat(take.multiplier || "1.0");
-		const hoursElapsed =
-			(take.elapsedTimeMs * multiplier) / (1000 * 60 * 60);
-		return Number((acc + hoursElapsed).toFixed(1));
-	}, 0);
-
-	const waitingTakesStats = takes.reduce(
-		(acc: { count: number; hours: number }, take) => {
-			if (take.status !== "waitingUpload" && take.status !== "uploaded")
-				return acc;
-			const multiplier = Number.parseFloat(take.multiplier || "1.0");
-			const hoursElapsed =
-				(take.elapsedTimeMs * multiplier) / (1000 * 60 * 60);
-			return {
-				count: acc.count + 1,
-				hours: Number((acc.hours + hoursElapsed).toFixed(1)),
-			};
-		},
-		{ count: 0, hours: 0 },
+	const takeTimeMs = takes.reduce(
+		(acc, take) => acc + take.elapsedTimeMs * Number(take.multiplier),
+		0,
 	);
+	const takeTime = prettyPrintTime(takeTimeMs);
 
 	return {
-		text: `You have logged \`${approvedTakes}\` approved takes!`,
+		text: `You have logged ${takeTime} of takes!`,
 		response_type: "ephemeral",
 		blocks: [
 			{
@@ -51,7 +34,7 @@ export default async function handleHome(
 				type: "section",
 				text: {
 					type: "mrkdwn",
-					text: `You have logged \`${approvedTakes}\` takes! \n\n*Pending Approval:* \`${waitingTakesStats.count}\` sessions, \`${waitingTakesStats.hours}\` hours total`,
+					text: `You have logged ${takeTime} of takes!`,
 				},
 			},
 			{
@@ -61,21 +44,21 @@ export default async function handleHome(
 						type: "button",
 						text: {
 							type: "plain_text",
-							text: "🎬 Start New Session",
-							emoji: true,
-						},
-						value: "start",
-						action_id: "takes_start",
-					},
-					{
-						type: "button",
-						text: {
-							type: "plain_text",
 							text: "📋 History",
 							emoji: true,
 						},
 						value: "history",
 						action_id: "takes_history",
+					},
+					{
+						type: "button",
+						text: {
+							type: "plain_text",
+							text: "🔄 Refresh",
+							emoji: true,
+						},
+						value: "status",
+						action_id: "takes_home",
 					},
 				],
 			},

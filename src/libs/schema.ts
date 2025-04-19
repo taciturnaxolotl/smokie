@@ -1,28 +1,59 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer } from "drizzle-orm/pg-core";
+import type { Pool } from "pg";
 
 // Define the takes table
-export const takes = sqliteTable("takes", {
+export const takes = pgTable("takes", {
 	id: text("id").primaryKey(),
 	userId: text("user_id").notNull(),
-	ts: text("ts"),
-	status: text("status").notNull().default("active"), // active, paused, waitingUpload, completed
+	ts: text("ts").notNull(),
 	elapsedTimeMs: integer("elapsed_time_ms").notNull().default(0),
-	targetDurationMs: integer("target_duration_ms").notNull(),
-	periods: text("periods").notNull(), // JSON string of time periods
-	lastResumeAt: integer("last_resume_at", { mode: "timestamp" }),
-	createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-		() => new Date(),
-	),
-	completedAt: integer("completed_at", { mode: "timestamp" }),
-	takeUploadedAt: integer("take_uploaded_at", { mode: "timestamp" }),
-	takeUrl: text("take_url"),
+	createdAt: integer("created_at")
+		.$defaultFn(() => Math.floor(new Date().getTime() / 1000))
+		.notNull(),
+	media: text("media").notNull().default("[]"), // array of media urls
 	multiplier: text("multiplier").notNull().default("1.0"),
-	notes: text("notes"),
-	description: text("description"),
-	notifiedLowTime: integer("notified_low_time", { mode: "boolean" }).default(
-		false,
-	), // has user been notified about low time
-	notifiedPauseExpiration: integer("notified_pause_expiration", {
-		mode: "boolean",
-	}).default(false), // has user been notified about pause expiration
+	notes: text("notes").notNull().default(""),
 });
+
+export const users = pgTable("users", {
+	id: text("id").primaryKey(),
+	totalTakesTime: integer("total_takes_time").default(0),
+});
+
+export async function setupTriggers(pool: Pool) {
+	await pool.query(`
+  		CREATE INDEX IF NOT EXISTS idx_takes_user_id ON takes(user_id);
+
+  		CREATE OR REPLACE FUNCTION update_user_total_time()
+  		RETURNS TRIGGER AS $$
+  		BEGIN
+				IF TG_OP = 'INSERT' THEN
+					UPDATE users
+					SET total_takes_time = COALESCE(total_takes_time, 0) + NEW.elapsed_time_ms
+					WHERE id = NEW.user_id;
+				ELSIF TG_OP = 'DELETE' THEN
+					UPDATE users
+					SET total_takes_time = COALESCE(total_takes_time, 0) - OLD.elapsed_time_ms
+					WHERE id = OLD.user_id;
+				ELSIF TG_OP = 'UPDATE' THEN
+					UPDATE users
+					SET total_takes_time = COALESCE(total_takes_time, 0) - OLD.elapsed_time_ms + NEW.elapsed_time_ms
+					WHERE id = NEW.user_id;
+				END IF;
+
+				EXCEPTION WHEN OTHERS THEN
+					RAISE NOTICE 'Error updating user total time: %', SQLERRM;
+					RETURN NULL;
+
+				RETURN NEW;
+  		END;
+  		$$ LANGUAGE plpgsql;
+
+  		DROP TRIGGER IF EXISTS update_user_total_time_trigger ON takes;
+
+  		CREATE TRIGGER update_user_total_time_trigger
+  		AFTER INSERT OR UPDATE OR DELETE ON takes
+  		FOR EACH ROW
+  		EXECUTE FUNCTION update_user_total_time();
+		`);
+}

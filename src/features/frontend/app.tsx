@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 import { prettyPrintTime } from "../../libs/time";
 import { fetchUserData } from "../../libs/cachet";
+import type { RecentTake } from "../api/routes/recentTakes";
 
 export function App() {
-	const [takes, setTakes] = useState<
-		{
-			id: string;
-			userId: string;
-			description: string;
-			completedAt: Date;
-			status: string;
-			mp4Url: string;
-			elapsedTime: number;
-		}[]
-	>([]);
+	const [takes, setTakes] = useState<RecentTake[]>([]);
 
 	const [userData, setUserData] = useState<{
 		[key: string]: { displayName: string; imageUrl: string };
@@ -44,6 +35,8 @@ export function App() {
 		async function getTakes() {
 			const res = await fetch("/api/recentTakes");
 			const data = await res.json();
+
+			console.log(data);
 			setTakes(data.takes);
 		}
 		getTakes();
@@ -56,7 +49,7 @@ export function App() {
 				{takes.map((take) => (
 					<div key={take.id} className="take-card">
 						<div className="take-header">
-							<h2 className="take-title">{take.description}</h2>
+							<h2 className="take-title">{take.notes}</h2>
 							<div className="user-pill">
 								<div className="user-info">
 									<img
@@ -69,11 +62,6 @@ export function App() {
 											take.userId}
 									</span>
 								</div>
-								<span
-									className={`status-badge status-${take.status}`}
-								>
-									{take.status}
-								</span>
 							</div>
 						</div>
 
@@ -81,34 +69,50 @@ export function App() {
 							<div className="meta-item">
 								<span className="meta-label">Completed:</span>
 								<span className="meta-value">
-									{new Date(
-										take.completedAt,
-									).toLocaleString()}
+									{new Date(take.createdAt).toLocaleString()}
 								</span>
 							</div>
 							<div className="meta-item">
 								<span className="meta-label">Duration:</span>
 								<span className="meta-value">
-									{prettyPrintTime(take.elapsedTime)}
+									{prettyPrintTime(take.elapsedTimeMs)}
 								</span>
 							</div>
 						</div>
 
-						{take.mp4Url && (
-							<div className="video-container">
-								<video controls className="take-video">
-									<source
-										src={take.mp4Url}
-										type="video/mp4"
-									/>
-									<track
-										kind="captions"
-										src=""
-										label="Captions"
-									/>
-								</video>
-							</div>
-						)}
+						{take.mediaUrls?.map((url: string, index: number) => {
+							const isVideo = url.endsWith(".mp4");
+							return (
+								<div
+									key={`media-${take.id}-${index}`}
+									className={
+										isVideo
+											? "video-container"
+											: "image-container"
+									}
+								>
+									{isVideo ? (
+										<video controls className="take-video">
+											<source
+												src={url}
+												type="video/mp4"
+											/>
+											<track
+												kind="captions"
+												src=""
+												label="Captions"
+											/>
+										</video>
+									) : (
+										<img
+											src={url}
+											alt=""
+											className="take-image"
+										/>
+									)}
+								</div>
+							);
+						})}
 					</div>
 				))}
 			</div>
