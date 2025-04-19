@@ -1,6 +1,6 @@
 import "./styles.css";
 import { createRoot } from "react-dom/client";
-import { App } from "./app.tsx";
+import { App } from "./App.tsx";
 
 document.addEventListener("DOMContentLoaded", () => {
 	const element = document.getElementById("root");

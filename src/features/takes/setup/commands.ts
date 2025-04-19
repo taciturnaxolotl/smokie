@@ -5,6 +5,10 @@ import type { MessageResponse } from "../types";
 import * as Sentry from "@sentry/bun";
 import { blog } from "../../../libs/Logger";
 import handleHome from "../handlers/home";
+import { db } from "../../../libs/db";
+import { users as usersTable } from "../../../libs/schema";
+import { eq } from "drizzle-orm";
+import { handleSetup } from "../handlers/setup";
 
 export default function setupCommands() {
 	// Main command handler
@@ -19,6 +23,16 @@ export default function setupCommands() {
 				const subcommand = args[0]?.toLowerCase() || "";
 
 				let response: MessageResponse | undefined;
+
+				const userFromDB = await db
+					.select()
+					.from(usersTable)
+					.where(eq(usersTable.id, userId));
+
+				if (userFromDB.length === 0) {
+					await handleSetup(context.triggerId as string);
+					return;
+				}
 
 				// Route to the appropriate handler function
 				switch (subcommand) {

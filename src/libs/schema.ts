@@ -17,10 +17,11 @@ export const takes = pgTable("takes", {
 
 export const users = pgTable("users", {
 	id: text("id").primaryKey(),
-	totalTakesTime: integer("total_takes_time").default(0),
+	totalTakesTime: integer("total_takes_time").default(0).notNull(),
 	hackatimeKeys: text("hackatime_keys").notNull().default("[]"),
 	projectName: text("project_name").notNull().default(""),
 	projectDescription: text("project_description").notNull().default(""),
+	projectBannerUrl: text("project_banner_url").notNull().default(""),
 	usingHackatimeV2: boolean().notNull().default(true),
 });
 

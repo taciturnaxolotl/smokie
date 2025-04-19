@@ -1,15 +1,55 @@
 import { useEffect, useState } from "react";
-import { prettyPrintTime } from "../../libs/time";
-import { fetchUserData } from "../../libs/cachet";
-import type { RecentTake } from "../api/routes/recentTakes";
+import { useParams } from "react-router-dom";
+import { prettyPrintTime } from "../../../libs/time";
+import { fetchUserData } from "../../../libs/cachet";
+import type { RecentTake } from "../../api/routes/recentTakes";
+import type { Project } from "../../api/routes/projects";
 import Masonry from "react-masonry-css";
 
-export function App() {
+export function ProjectTakes() {
+	const { user } = useParams();
 	const [takes, setTakes] = useState<RecentTake[]>([]);
-
 	const [userData, setUserData] = useState<{
 		[key: string]: { displayName: string; imageUrl: string };
 	}>({});
+	const [project, setProject] = useState<Project>();
+
+	useEffect(() => {
+		async function getTakes() {
+			try {
+				const res = await fetch(
+					`/api/recentTakes?user=${encodeURIComponent(user as string)}`,
+				);
+				if (!res.ok) {
+					throw new Error(`HTTP error! status: ${res.status}`);
+				}
+				const data = await res.json();
+				setTakes(data.takes);
+			} catch (error) {
+				console.error("Error fetching takes:", error);
+				setTakes([]);
+			}
+		}
+
+		async function getProject() {
+			try {
+				const res = await fetch(
+					`/api/projects?user=${encodeURIComponent(user as string)}`,
+				);
+				if (!res.ok) {
+					throw new Error(`HTTP error! status: ${res.status}`);
+				}
+				const data = await res.json();
+				setProject(data.projects);
+			} catch (error) {
+				console.error("Error fetching project:", error);
+			}
+		}
+
+		getTakes();
+		getProject();
+	}, [user]);
+
 	useEffect(() => {
 		async function loadUserData() {
 			const userIds = takes.map((take) => take.userId);
@@ -32,23 +72,6 @@ export function App() {
 		loadUserData();
 	}, [takes]);
 
-	useEffect(() => {
-		async function getTakes() {
-			try {
-				const res = await fetch("/api/recentTakes");
-				if (!res.ok) {
-					throw new Error(`HTTP error! status: ${res.status}`);
-				}
-				const data = await res.json();
-				setTakes(data.takes);
-			} catch (error) {
-				console.error("Error fetching takes:", error);
-				setTakes([]);
-			}
-		}
-		getTakes();
-	}, []);
-
 	const breakpointColumns = {
 		default: 4,
 		1100: 3,
@@ -58,7 +81,25 @@ export function App() {
 
 	return (
 		<div className="container">
-			<h1 className="title">Recent Takes</h1>
+			<section className="project-header">
+				{project?.projectBannerUrl && (
+					<img
+						src={project.projectBannerUrl}
+						alt="Project banner"
+						className="project-banner"
+						style={{
+							width: "100%",
+							height: "200px",
+							objectFit: "cover",
+							borderRadius: "12px",
+							marginBottom: "2rem",
+						}}
+					/>
+				)}
+				<h1 className="title">
+					{project?.projectName || "Recent Takes"}
+				</h1>
+			</section>
 			{takes.length === 0 ? (
 				<div className="no-takes-message">No takes found</div>
 			) : (

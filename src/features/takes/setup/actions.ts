@@ -3,6 +3,7 @@ import { blog } from "../../../libs/Logger";
 import handleHelp from "../handlers/help";
 import { handleHistory } from "../handlers/history";
 import handleHome from "../handlers/home";
+import { setupSubmitListener } from "../handlers/setup";
 import upload from "../services/upload";
 import type { MessageResponse } from "../types";
 import * as Sentry from "@sentry/bun";
@@ -70,6 +71,17 @@ export default function setupActions() {
 		Sentry.captureException(error, {
 			extra: {
 				context: "upload setup",
+			},
+		});
+	}
+
+	// setup the setup view handler
+	try {
+		setupSubmitListener();
+	} catch (error) {
+		Sentry.captureException(error, {
+			extra: {
+				context: "submit modal setup",
 			},
 		});
 	}

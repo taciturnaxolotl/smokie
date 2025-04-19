@@ -115,3 +115,51 @@ body {
 	border-radius: 8px;
 	max-height: 40rem;
 }
+
+.projects-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 2rem;
+}
+
+.project-card {
+	background: white;
+	border-radius: 12px;
+	padding: 1.5rem;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	text-decoration: none;
+	color: inherit;
+	transition:
+		transform 0.2s,
+		box-shadow 0.2s;
+}
+
+.project-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.project-title {
+	font-size: 1.5rem;
+	margin: 0 0 1rem 0;
+}
+
+.project-meta {
+	color: #666;
+}
+
+.project-banner {
+	width: 100%;
+	height: 200px;
+	object-fit: cover;
+	border-radius: 8px;
+	margin-bottom: 1rem;
+}
+
+.project-banner-container {
+	width: 100%;
+	margin-bottom: 2rem;
+	border-radius: 12px;
+	overflow: hidden;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

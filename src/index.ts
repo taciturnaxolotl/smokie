@@ -60,6 +60,7 @@ Bun.serve({
 	development: environment === "dev",
 	routes: {
 		"/": frontend,
+		"/user/*": frontend,
 		"/health": new Response("OK"),
 	},
 	async fetch(request: Request) {
