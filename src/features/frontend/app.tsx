@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { prettyPrintTime } from "../../libs/time";
 import { fetchUserData } from "../../libs/cachet";
 import type { RecentTake } from "../api/routes/recentTakes";
+import Masonry from "react-masonry-css";
 
 export function App() {
 	const [takes, setTakes] = useState<RecentTake[]>([]);
@@ -42,10 +43,21 @@ export function App() {
 		getTakes();
 	}, []);
 
+	const breakpointColumns = {
+		default: 4,
+		1100: 3,
+		700: 2,
+		500: 1,
+	};
+
 	return (
 		<div className="container">
 			<h1 className="title">Recent Takes</h1>
-			<div className="takes-grid">
+			<Masonry
+				breakpointCols={breakpointColumns}
+				className="takes-grid"
+				columnClassName="takes-grid-column"
+			>
 				{takes.map((take) => (
 					<div key={take.id} className="take-card">
 						<div className="take-header">
@@ -81,18 +93,25 @@ export function App() {
 						</div>
 
 						{take.mediaUrls?.map((url: string, index: number) => {
-							const isVideo = url.endsWith(".mp4");
+							// More robust video detection for Slack-style URLs
+							const isVideo =
+								/\.(mp4|mov|webm|ogg)/i.test(url) ||
+								(url.includes("files.slack.com") &&
+									url.includes("download"));
+							const contentType = isVideo ? "video" : "image";
+
 							return (
 								<div
 									key={`media-${take.id}-${index}`}
-									className={
-										isVideo
-											? "video-container"
-											: "image-container"
-									}
+									className={`${contentType}-container`}
 								>
 									{isVideo ? (
-										<video controls className="take-video">
+										<video
+											controls
+											className="take-video"
+											preload="metadata"
+											playsInline
+										>
 											<source
 												src={url}
 												type="video/mp4"
@@ -102,12 +121,15 @@ export function App() {
 												src=""
 												label="Captions"
 											/>
+											Your browser does not support the
+											video tag.
 										</video>
 									) : (
 										<img
 											src={url}
-											alt=""
+											alt={`Media content ${index + 1}`}
 											className="take-image"
+											loading="lazy"
 										/>
 									)}
 								</div>
@@ -115,7 +137,7 @@ export function App() {
 						})}
 					</div>
 				))}
-			</div>
+			</Masonry>
 		</div>
 	);
 }

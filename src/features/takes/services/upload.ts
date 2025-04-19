@@ -1,212 +1,115 @@
 import { slackApp, slackClient } from "../../../index";
 import { db } from "../../../libs/db";
 import { takes as takesTable } from "../../../libs/schema";
-import { eq, and } from "drizzle-orm";
-import { generateSlackDate, prettyPrintTime } from "../../../libs/time";
 import * as Sentry from "@sentry/bun";
 
 export default async function upload() {
-	slackApp.anyMessage(async ({ payload }) => {
+	slackApp.anyMessage(async ({ payload, context }) => {
 		try {
-			if (payload.subtype !== "file_share") return;
-			const user = payload.user;
+			const user = payload.user as string;
 
-			if (!user) return;
-
-			if (!payload.channel.startsWith("D")) return;
-
-			const takesNeedUpload = await db
-				.select()
-				.from(takesTable)
-				.where(
-					and(
-						eq(takesTable.userId, payload.user as string),
-						eq(takesTable.ts, payload.thread_ts as string),
-						eq(takesTable.media, "[]"),
-					),
-				);
-
-			if (takesNeedUpload.length === 0) return;
-
-			const take = takesNeedUpload[0];
-
-			if (!payload.files || !take) return;
-
-			const file = payload.files[0];
-
-			if (!file || !file.id || !file.thumb_video || !file.mp4) {
-				await slackClient.reactions.add({
-					channel: payload.channel,
-					timestamp: payload.ts as string,
-					name: "no",
-				});
-
-				slackClient.chat.postMessage({
-					channel: payload.channel,
-					thread_ts: payload.thread_ts,
-					text: "that's not a video file? 🤔",
-				});
+			if (
+				payload.subtype === "bot_message" ||
+				payload.subtype === "thread_broadcast" ||
+				payload.channel !== process.env.SLACK_LISTEN_CHANNEL
+			)
 				return;
+
+			// Convert Slack formatting to markdown
+			const replaceUserMentions = async (text: string) => {
+				const regex = /<@([A-Z0-9]+)>/g;
+				const matches = text.match(regex);
+
+				if (!matches) return text;
+
+				let result = text;
+				for (const match of matches) {
+					const userId = match.match(/[A-Z0-9]+/)?.[0];
+					if (!userId) continue;
+
+					try {
+						const userInfo = await slackClient.users.info({
+							user: userId,
+						});
+						const name =
+							userInfo.user?.profile?.display_name ||
+							userInfo.user?.real_name ||
+							userId;
+						result = result.replace(match, `@${name}`);
+					} catch (e) {
+						result = result.replace(match, `@${userId}`);
+					}
+				}
+				return result;
+			};
+
+			const markdownText = (await replaceUserMentions(payload.text))
+				.replace(/\*(.*?)\*/g, "**$1**") // Bold
+				.replace(/_(.*?)_/g, "*$1*") // Italic
+				.replace(/~(.*?)~/g, "~~$1~~") // Strikethrough
+				.replace(/<(https?:\/\/[^|]+)\|([^>]+)>/g, "[$2]($1)"); // Links
+
+			const mediaUrls = [];
+
+			if (payload.files && payload.files.length > 0) {
+				for (const file of payload.files) {
+					if (
+						file.mimetype &&
+						(file.mimetype.startsWith("image/") ||
+							file.mimetype.startsWith("video/"))
+					) {
+						const fileres = await slackClient.files.sharedPublicURL(
+							{
+								file: file.id as string,
+								token: process.env.SLACK_USER_TOKEN,
+							},
+						);
+
+						const fetchRes = await fetch(
+							fileres.file?.permalink_public as string,
+						);
+						const html = await fetchRes.text();
+						const match = html.match(
+							/https:\/\/files.slack.com\/files-pri\/[^"]+pub_secret=([^"&]*)/,
+						);
+						const filePublicUrl = match?.[0];
+
+						if (filePublicUrl) {
+							mediaUrls.push(filePublicUrl);
+						}
+					}
+				}
 			}
 
-			const fileres = await slackClient.files.sharedPublicURL({
-				file: file.id,
-				token: process.env.SLACK_USER_TOKEN,
+			// fetch time spent on project via hackatime
+			const timeSpentMs = 60000;
+
+			await db.insert(takesTable).values({
+				id: payload.ts,
+				userId: user,
+				ts: payload.ts,
+				notes: markdownText,
+				media: JSON.stringify(mediaUrls),
+				elapsedTimeMs: timeSpentMs,
 			});
-
-			const fetchRes = await fetch(
-				fileres.file?.permalink_public as string,
-			);
-			const html = await fetchRes.text();
-			const match = html.match(/src="([^"]*\.mp4[^"]*)"/);
-			const takePublicUrl = match?.[1];
-
-			const takeUploadedAt = new Date();
-
-			await db
-				.update(takesTable)
-				.set({
-					media: JSON.stringify([takePublicUrl]),
-				})
-				.where(eq(takesTable.id, take.id));
 
 			await slackClient.reactions.add({
 				channel: payload.channel,
-				timestamp: payload.ts as string,
+				timestamp: payload.ts,
 				name: "fire",
 			});
 
 			await slackClient.chat.postMessage({
 				channel: payload.channel,
-				thread_ts: payload.thread_ts,
-				text: ":video_camera: uploaded! leme send this to the team for review real quick",
+				thread_ts: payload.ts,
+				text: ":inbox_tray: saved! thanks for the upload",
 				blocks: [
 					{
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: ":video_camera: uploaded! leme send this to the team for review real quick",
+							text: `:inbox_tray: saved! ${mediaUrls.length > 0 ? "uploaded media and " : ""}saved your notes`,
 						},
-					},
-					{
-						type: "divider",
-					},
-					{
-						type: "context",
-						elements: [
-							{
-								type: "mrkdwn",
-								text: `take by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.notes}*`,
-							},
-						],
-					},
-				],
-			});
-
-			await slackClient.chat.postMessage({
-				channel: process.env.SLACK_REVIEW_CHANNEL || "",
-				text: ":video_camera: new take uploaded!",
-				blocks: [
-					{
-						type: "section",
-						text: {
-							type: "mrkdwn",
-							text: `:video_camera: new take uploaded by <@${user}> for \`${prettyPrintTime(take.elapsedTimeMs)}\` working on: *${take.notes}*`,
-						},
-					},
-					{
-						type: "divider",
-					},
-					{
-						type: "video",
-						video_url: `${process.env.API_URL}/api/video/?media=${take.media[0]}`,
-						title_url: `${process.env.API_URL}/api/video/?media=${take.media[0]}`,
-						title: {
-							type: "plain_text",
-							text: `${take.notes} by <@${user}> uploaded at ${generateSlackDate(takeUploadedAt)}`,
-						},
-						thumbnail_url: `https://cachet.dunkirk.sh/users/${payload.user}/r`,
-						alt_text: `takes from ${takeUploadedAt?.toLocaleString("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })} uploaded with the description: *${take.notes}*`,
-					},
-					{
-						type: "divider",
-					},
-					{
-						type: "actions",
-						elements: [
-							{
-								type: "static_select",
-								placeholder: {
-									type: "plain_text",
-									text: "Select multiplier",
-								},
-								options: [
-									{
-										text: {
-											type: "plain_text",
-											text: "0.5x",
-										},
-										value: "0.5",
-									},
-									{
-										text: {
-											type: "plain_text",
-											text: "1x",
-										},
-										value: "1",
-									},
-									{
-										text: {
-											type: "plain_text",
-											text: "1.25x",
-										},
-										value: "1.25",
-									},
-									{
-										text: {
-											type: "plain_text",
-											text: "1.5x",
-										},
-										value: "1.5",
-									},
-									{
-										text: {
-											type: "plain_text",
-											text: "2x",
-										},
-										value: "2",
-									},
-									{
-										text: {
-											type: "plain_text",
-											text: "3x",
-										},
-										value: "3",
-									},
-								],
-								action_id: "select_multiplier",
-							},
-							{
-								type: "button",
-								text: {
-									type: "plain_text",
-									text: "approve",
-								},
-								style: "primary",
-								value: take.id,
-								action_id: "approve",
-							},
-							{
-								type: "button",
-								text: {
-									type: "plain_text",
-									text: "reject",
-								},
-								style: "danger",
-								value: take.id,
-								action_id: "reject",
-							},
-						],
 					},
 				],
 			});
@@ -214,7 +117,7 @@ export default async function upload() {
 			console.error("Error handling file message:", error);
 			await slackClient.chat.postMessage({
 				channel: payload.channel,
-				thread_ts: payload.thread_ts,
+				thread_ts: payload.ts,
 				text: ":warning: there was an error processing your upload",
 			});
 
@@ -222,166 +125,10 @@ export default async function upload() {
 				extra: {
 					channel: payload.channel,
 					user: payload.user,
-					thread_ts: payload.thread_ts,
+					thread_ts: payload.ts,
 				},
 				tags: {
 					type: "file_upload_error",
-				},
-			});
-		}
-	});
-
-	slackApp.action("select_multiplier", async () => {});
-	slackApp.action("dismiss_message", async ({ payload, context }) => {
-		try {
-			if (context.respond)
-				await context.respond({
-					delete_original: true,
-				});
-		} catch (error) {
-			console.error("Error dismissing message:", error);
-			Sentry.captureException(error, {
-				extra: {
-					payload,
-					context,
-				},
-				tags: {
-					type: "dismiss_message_error",
-				},
-			});
-		}
-	});
-
-	slackApp.action("approve", async ({ payload, context }) => {
-		try {
-			const multiplier = Object.values(payload.state.values)[0]
-				?.select_multiplier?.selected_option?.value;
-
-			// @ts-expect-error
-			const takeId = payload.actions[0]?.value;
-
-			const take = await db
-				.select()
-				.from(takesTable)
-				.where(eq(takesTable.id, takeId));
-			if (take.length === 0) {
-				return;
-			}
-
-			const takeToApprove = take[0];
-			if (!takeToApprove) return;
-
-			if (!multiplier || Number.isNaN(Number(multiplier))) {
-				await slackClient.chat.postEphemeral({
-					channel: process.env.SLACK_REVIEW_CHANNEL || "",
-					user: payload.user.id,
-					text: ":warning: please select a multiplier",
-					blocks: [
-						{
-							type: "actions",
-							elements: [
-								{
-									type: "button",
-									text: {
-										type: "plain_text",
-										text: "⚠️ I'll select a multiplier",
-									},
-									action_id: "dismiss_message",
-								},
-							],
-						},
-					],
-				});
-				return;
-			}
-
-			await db
-				.update(takesTable)
-				.set({
-					multiplier: multiplier,
-				})
-				.where(eq(takesTable.id, takeId));
-
-			await slackClient.chat.postMessage({
-				channel: payload.user.id,
-				thread_ts: take[0]?.ts as string,
-				text: `take approved with multiplier \`${multiplier}\` so you have earned *${Number((takeToApprove.elapsedTimeMs * Number(multiplier)) / 1000 / 3600).toFixed(1)} takes*!`,
-			});
-
-			// delete the message from the review channel
-			if (context.respond)
-				await context.respond({
-					delete_original: true,
-				});
-		} catch (error) {
-			console.error("Error approving take:", error);
-
-			await slackClient.chat.postEphemeral({
-				channel: process.env.SLACK_REVIEW_CHANNEL || "",
-				user: payload.user.id,
-				text: ":warning: there was an error approving the take",
-			});
-
-			Sentry.captureException(error, {
-				extra: {
-					// @ts-expect-error
-					take: payload.actions[0]?.value,
-					userApproving: payload.user,
-				},
-				tags: {
-					type: "take_approve_error",
-				},
-			});
-		}
-	});
-
-	slackApp.action("reject", async ({ payload, context }) => {
-		try {
-			// @ts-expect-error
-			const takeId = payload.actions[0]?.value;
-
-			const take = await db
-				.select()
-				.from(takesTable)
-				.where(eq(takesTable.id, takeId));
-			if (take.length === 0) {
-				return;
-			}
-			await db
-				.update(takesTable)
-				.set({
-					multiplier: "0",
-				})
-				.where(eq(takesTable.id, takeId));
-
-			await slackClient.chat.postMessage({
-				channel: payload.user.id,
-				thread_ts: take[0]?.ts as string,
-				text: "take rejected :(",
-			});
-
-			// delete the message from the review channel
-			if (context.respond)
-				await context.respond({
-					delete_original: true,
-				});
-		} catch (error) {
-			console.error("Error rejecting take:", error);
-
-			await slackClient.chat.postEphemeral({
-				channel: process.env.SLACK_REVIEW_CHANNEL || "",
-				user: payload.user.id,
-				text: ":warning: there was an error rejecting the take",
-			});
-
-			Sentry.captureException(error, {
-				extra: {
-					// @ts-expect-error
-					take: payload.actions[0]?.value,
-					userRejecting: payload.user,
-				},
-				tags: {
-					type: "take_reject_error",
 				},
 			});
 		}

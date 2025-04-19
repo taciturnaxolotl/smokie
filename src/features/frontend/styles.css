@@ -23,9 +23,14 @@ body {
 }
 
 .takes-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-	gap: 2rem;
+	display: flex;
+	margin-left: -2rem; /* Compensate for column gap */
+	width: auto;
+}
+
+.takes-grid-column {
+	padding-left: 2rem; /* Column gap */
+	background-clip: padding-box;
 }
 
 .take-card {
@@ -33,6 +38,7 @@ body {
 	border-radius: 12px;
 	padding: 1.5rem;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	margin-bottom: 2rem;
 }
 
 .take-header {
@@ -68,21 +74,6 @@ body {
 	align-items: center;
 }
 
-.status-badge {
-	padding: 0.25rem 0.75rem;
-	border-radius: 999px;
-}
-
-.status-approved {
-	background: #e6f4ea;
-	color: #1e7e34;
-}
-
-.status-uploaded {
-	background: #fff8c1;
-	color: #f2a30a;
-}
-
 .take-meta {
 	margin-bottom: 1rem;
 }
@@ -97,14 +88,18 @@ body {
 	margin-right: 0.5rem;
 	min-width: 80px;
 }
-
-.video-container {
+.video-container,
+.image-container {
 	margin-top: 1rem;
 	border-radius: 8px;
 	overflow: hidden;
 }
 
-.take-video {
+.take-video,
+.take-image {
 	width: 100%;
+	height: auto;
 	display: block;
+	border-radius: 8px;
+	max-height: 40rem;
 }

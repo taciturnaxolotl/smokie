@@ -30,10 +30,12 @@ SLACK_SIGNING_SECRET="xxxxx"
 SLACK_SPAM_CHANNEL="C069N64PW4A"
 SLACK_LOG_CHANNEL="C08KX2YNN87"
 SLACK_REVIEW_CHANNEL="C07P0CXT08H"
+SLACK_LISTEN_CHANNEL="C08NEE6FVJT"
 NODE_ENV="dev"
 SLACK_USER_TOKEN="xoxp-xxxxx-xxxxx-xxxxx-xxxxx"
 API_URL="https://casual-renewing-reptile.ngrok-free.app"
 SENTRY_DSN="https://xxxxxx@xxxxxx.ingest.us.sentry.io/xxxx"
+DATABASE_URL="postgres://username:password@host:5432/smokie"
 ```
 
 ## 📜 License
