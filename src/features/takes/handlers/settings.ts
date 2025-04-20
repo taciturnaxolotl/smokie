@@ -1,12 +1,9 @@
-import type { UploadedFile } from "slack-edge";
 import { slackApp, slackClient } from "../../../index";
 import { db } from "../../../libs/db";
 import { eq } from "drizzle-orm";
 import { users as usersTable } from "../../../libs/schema";
 import {
-	getHackatimeApiUrl,
 	getHackatimeName,
-	getHackatimeVersion,
 	HACKATIME_VERSIONS,
 	type HackatimeVersion,
 } from "../../../libs/hackatime";
@@ -218,10 +215,10 @@ export async function setupSubmitListener() {
 					projectDescription: values.project_description
 						?.project_description_input?.value as string,
 					projectBannerUrl,
-					repoLink: values.project_link?.repo_link?.value as
+					repoLink: values.repo_link?.repo_link_input?.value as
 						| string
 						| undefined,
-					demoLink: values.project_link?.demo_link?.value as
+					demoLink: values.demo_link?.demo_link_input?.value as
 						| string
 						| undefined,
 					hackatimeVersion,
