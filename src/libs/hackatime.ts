@@ -59,21 +59,30 @@ export async function fetchHackatimeSummary(
 	userId: string,
 	version: HackatimeVersion = "v2",
 	projectKeys?: string[],
+	from?: Date,
+	to?: Date,
 ) {
 	const apiUrl = getHackatimeApiUrl(version);
-	const response = await fetch(
-		`${apiUrl}/summary?user=${userId}&interval=month`,
-		{
-			headers: {
-				accept: "application/json",
-				Authorization: "Bearer 2ce9e698-8a16-46f0-b49a-ac121bcfd608",
-			},
+	const params = new URLSearchParams({
+		user: userId,
+	});
+	if (!from || !to) {
+		params.append("interval", "month");
+	} else if (from && to) {
+		params.append("from", from.toISOString());
+		params.append("to", to.toISOString());
+	}
+
+	const response = await fetch(`${apiUrl}/summary?${params.toString()}`, {
+		headers: {
+			accept: "application/json",
+			Authorization: "Bearer 2ce9e698-8a16-46f0-b49a-ac121bcfd608",
 		},
-	);
+	});
 
 	if (!response.ok) {
 		throw new Error(
-			`Failed to fetch Hackatime summary: ${response.status} ${response.statusText}`,
+			`Failed to fetch Hackatime summary: ${response.status} ${response.statusText}: ${await response.text()}`,
 		);
 	}
 
@@ -109,4 +118,32 @@ export async function fetchHackatimeSummary(
 		total_categories_human_readable: `${hours}h ${minutes}m ${seconds}s`,
 		projectsKeys: projectsKeys,
 	};
+}
+
+/**
+ * Fetches the most recent project keys from a user's Hackatime data
+ * @param userId The user ID to fetch the project keys for
+ * @param limit The maximum number of projects to return (defaults to 10)
+ * @param version The Hackatime version to use (defaults to v2)
+ * @returns A promise that resolves to an array of recent project keys
+ */
+export async function fetchRecentProjectKeys(
+	userId: string,
+	limit = 10,
+	version: HackatimeVersion = "v2",
+): Promise<string[]> {
+	const summary = await fetchHackatimeSummary(userId, version);
+
+	// Extract projects and sort by most recent
+	const sortedProjects =
+		summary.projects?.sort(
+			(a: { last_used_at: string }, b: { last_used_at: string }) =>
+				new Date(b.last_used_at).getTime() -
+				new Date(a.last_used_at).getTime(),
+		) || [];
+
+	// Return the keys of the most recent projects up to the limit
+	return sortedProjects
+		.slice(0, limit)
+		.map((project: { key: string }) => project.key);
 }

@@ -3,6 +3,7 @@ import { db } from "../../../libs/db";
 import { eq } from "drizzle-orm";
 import { users as usersTable } from "../../../libs/schema";
 import {
+	fetchRecentProjectKeys,
 	getHackatimeName,
 	HACKATIME_VERSIONS,
 	type HackatimeVersion,
@@ -20,12 +21,14 @@ export async function handleSettings(
 		repo_link: string | undefined;
 		demo_link: string | undefined;
 		hackatime_version: string;
+		hackatime_keys: string[];
 	} = {
 		project_name: "",
 		project_description: "",
 		repo_link: undefined,
 		demo_link: undefined,
 		hackatime_version: "v2",
+		hackatime_keys: [],
 	};
 
 	if (prefill) {
@@ -45,6 +48,9 @@ export async function handleSettings(
 					repo_link: existingUser.repoLink || undefined,
 					demo_link: existingUser.demoLink || undefined,
 					hackatime_version: existingUser.hackatimeVersion,
+					hackatime_keys: existingUser.hackatimeKeys
+						? JSON.parse(existingUser.hackatimeKeys)
+						: [],
 				};
 			}
 		} catch (error) {
@@ -64,7 +70,6 @@ export async function handleSettings(
 				type: "plain_text",
 				text: "Submit",
 			},
-			clear_on_close: true,
 			callback_id: "takes_setup_submit",
 			blocks: [
 				{
@@ -179,6 +184,40 @@ export async function handleSettings(
 						})),
 					},
 				},
+				{
+					type: "input",
+					block_id: "project_keys",
+					label: {
+						type: "plain_text",
+						text: "Project Keys",
+					},
+					element: {
+						type: "multi_static_select",
+						action_id: "project_keys_input",
+						initial_options: initialValues.hackatime_keys.map(
+							(key) => ({
+								text: {
+									type: "plain_text",
+									text: key,
+								},
+								value: key,
+							}),
+						),
+						options: (
+							await fetchRecentProjectKeys(
+								user,
+								10,
+								initialValues.hackatime_version as HackatimeVersion,
+							)
+						).map((key) => ({
+							text: {
+								type: "plain_text",
+								text: key,
+							},
+							value: key,
+						})),
+					},
+				},
 			],
 		},
 	});
@@ -193,7 +232,11 @@ export async function setupSubmitListener() {
 		const file = values.project_banner?.project_banner_input?.files?.[0]
 			?.url_private_download as string;
 
-		console.log(file);
+		const hackatimeKeys = JSON.stringify(
+			values.project_keys?.project_keys_input?.selected_options?.map(
+				(option) => option.value,
+			) || [],
+		);
 
 		try {
 			const projectBannerUrl = file
@@ -222,6 +265,7 @@ export async function setupSubmitListener() {
 						| string
 						| undefined,
 					hackatimeVersion,
+					hackatimeKeys,
 				})
 				.onConflictDoUpdate({
 					target: usersTable.id,
@@ -238,8 +282,49 @@ export async function setupSubmitListener() {
 							| string
 							| undefined,
 						hackatimeVersion,
+						hackatimeKeys,
 					},
 				});
+
+			// Update the view to show the latest Hackatime project keys
+			await slackClient.views.update({
+				view_id: payload.view.id,
+				view: {
+					type: "modal",
+					title: {
+						type: "plain_text",
+						text: "Add your hackatime keys",
+					},
+					blocks: [
+						{
+							type: "section",
+							text: {
+								type: "mrkdwn",
+								text: ":white_check_mark: Your project has been updated successfully!",
+							},
+						},
+						{
+							type: "section",
+							text: {
+								type: "mrkdwn",
+								text: "*Hackatime Project Keys:*",
+							},
+						},
+						{
+							type: "section",
+							text: {
+								type: "mrkdwn",
+								text: Object.values(HACKATIME_VERSIONS)
+									.map(
+										(v) =>
+											`• *${getHackatimeName(v.id)}*: \`${v.id}\``,
+									)
+									.join("\n"),
+							},
+						},
+					],
+				},
+			});
 		} catch (error) {
 			console.error("Error processing file:", error);
 			throw error;
