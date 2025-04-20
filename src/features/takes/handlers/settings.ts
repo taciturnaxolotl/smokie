@@ -193,14 +193,17 @@ export async function setupSubmitListener() {
 		const values = payload.view.state.values;
 		const userId = body.user.id;
 
-		const file = [
-			values.project_banner?.project_banner_input?.files?.[0]
-				?.url_private_download as string,
-		];
+		const file = values.project_banner?.project_banner_input?.files?.[0]
+			?.url_private_download as string;
+
+		console.log(file);
+
 		try {
-			const projectBannerUrl = await deployToHackClubCDN(file).then(
-				(res) => res.files[0]?.deployedUrl,
-			);
+			const projectBannerUrl = file
+				? await deployToHackClubCDN([file]).then(
+						(res) => res.files[0]?.deployedUrl,
+					)
+				: undefined;
 
 			const hackatimeVersion = values.hackatime_version
 				?.hackatime_version_input?.selected_option
