@@ -6,7 +6,7 @@ features:
     app_home:
         home_tab_enabled: false
         messages_tab_enabled: true
-        messages_tab_read_only_enabled: false
+        messages_tab_read_only_enabled: true
     bot_user:
         display_name: smokie dev
         always_online: false
@@ -22,20 +22,25 @@ oauth_config:
         user:
             - files:write
         bot:
+            - channels:history
             - chat:write
             - chat:write.public
             - commands
+            - groups:history
             - im:history
+            - links.embed:write
             - links:read
+            - links:write
             - reactions:write
             - users:read
-            - links.embed:write
+            - files:read
 settings:
     event_subscriptions:
         request_url: https://casual-renewing-reptile.ngrok-free.app/slack
         bot_events:
             - link_shared
-            - message.im
+            - message.channels
+            - message.groups
     interactivity:
         is_enabled: true
         request_url: https://casual-renewing-reptile.ngrok-free.app/slack
