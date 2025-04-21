@@ -1,6 +1,14 @@
 // Helper function for pretty-printing time
 export const prettyPrintTime = (ms: number): string => {
-	const minutes = Math.round(ms / 60000);
+	const hours = Math.floor(ms / 3600000);
+	const minutes = Math.floor((ms % 3600000) / 60000);
+
+	if (hours > 0 && minutes > 5) {
+		return `${hours} hours and ${minutes} minutes`;
+	}
+	if (hours > 0) {
+		return `${hours} hours`;
+	}
 	if (minutes < 2) {
 		const seconds = Math.max(0, Math.round(ms / 1000));
 		return `${seconds} seconds`;

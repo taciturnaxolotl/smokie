@@ -9,8 +9,8 @@ export const HACKATIME_VERSIONS = {
 	},
 	v2: {
 		id: "v2",
-		name: "Hackatime v2",
-		apiUrl: "https://hackatime.hackclub.com/api",
+		name: "Hackatime V2 (broken don't use)",
+		apiUrl: "https://waka.hackclub.com/api",
 	},
 } as const;
 
@@ -18,7 +18,7 @@ export type HackatimeVersion = keyof typeof HACKATIME_VERSIONS;
 
 /**
  * Converts a Hackatime version identifier to its full API URL
- * @param version The version identifier (v1 or v2)
+ * @param version The version identifier (v1 or v2 soon)
  * @returns The corresponding API URL
  */
 export function getHackatimeApiUrl(version: HackatimeVersion): string {
@@ -27,7 +27,7 @@ export function getHackatimeApiUrl(version: HackatimeVersion): string {
 
 /**
  * Gets the fancy name for a Hackatime version
- * @param version The version identifier (v1 or v2)
+ * @param version The version identifier (v1 or v2 soon)
  * @returns The fancy display name for the version
  */
 export function getHackatimeName(version: HackatimeVersion): string {
@@ -37,7 +37,7 @@ export function getHackatimeName(version: HackatimeVersion): string {
 /**
  * Determines which Hackatime version is being used based on the API URL
  * @param apiUrl The full Hackatime API URL
- * @returns The version identifier (v1 or v2), defaulting to v2 if not recognized
+ * @returns The version identifier (v1 or v2 soon), defaulting to v1 if not recognized
  */
 export function getHackatimeVersion(apiUrl: string): HackatimeVersion {
 	for (const [version, data] of Object.entries(HACKATIME_VERSIONS)) {
@@ -45,23 +45,66 @@ export function getHackatimeVersion(apiUrl: string): HackatimeVersion {
 			return version as HackatimeVersion;
 		}
 	}
-	return "v2";
+	return "v1";
+}
+
+/**
+ * Type definition for Hackatime summary response
+ */
+export interface HackatimeSummaryResponse {
+	categories?: Array<{
+		name: string;
+		total: number;
+		percent?: number;
+	}>;
+	projects?: Array<{
+		key: string;
+		name: string;
+		total: number;
+		percent?: number;
+		last_used_at: string;
+	}>;
+	languages?: Array<{
+		name: string;
+		total: number;
+		percent?: number;
+	}>;
+	editors?: Array<{
+		name: string;
+		total: number;
+		percent?: number;
+	}>;
+	operating_systems?: Array<{
+		name: string;
+		total: number;
+		percent?: number;
+	}>;
+	range?: {
+		start: string;
+		end: string;
+		timezone: string;
+	};
+	total_categories_sum?: number;
+	total_categories_human_readable?: string;
+	projectsKeys?: string[];
 }
 
 /**
  * Fetches a user's Hackatime summary
  * @param userId The user ID to fetch the summary for
- * @param version The Hackatime version to use (defaults to v2)
+ * @param version The Hackatime version to use (defaults to v1)
  * @param projectKeys Optional array of project keys to filter results by
+ * @param from Optional start date for the summary
+ * @param to Optional end date for the summary
  * @returns A promise that resolves to the summary data
  */
 export async function fetchHackatimeSummary(
 	userId: string,
-	version: HackatimeVersion = "v2",
+	version: HackatimeVersion = "v1",
 	projectKeys?: string[],
 	from?: Date,
 	to?: Date,
-) {
+): Promise<HackatimeSummaryResponse> {
 	const apiUrl = getHackatimeApiUrl(version);
 	const params = new URLSearchParams({
 		user: userId,
@@ -124,13 +167,13 @@ export async function fetchHackatimeSummary(
  * Fetches the most recent project keys from a user's Hackatime data
  * @param userId The user ID to fetch the project keys for
  * @param limit The maximum number of projects to return (defaults to 10)
- * @param version The Hackatime version to use (defaults to v2)
+ * @param version The Hackatime version to use (defaults to v1)
  * @returns A promise that resolves to an array of recent project keys
  */
 export async function fetchRecentProjectKeys(
 	userId: string,
 	limit = 10,
-	version: HackatimeVersion = "v2",
+	version: HackatimeVersion = "v1",
 ): Promise<string[]> {
 	const summary = await fetchHackatimeSummary(userId, version);
 

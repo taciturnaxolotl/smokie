@@ -3,6 +3,11 @@ import { slackApp, slackClient } from "../../../index";
 import { db } from "../../../libs/db";
 import { takes as takesTable, users as usersTable } from "../../../libs/schema";
 import * as Sentry from "@sentry/bun";
+import {
+	fetchHackatimeSummary,
+	type HackatimeVersion,
+} from "../../../libs/hackatime";
+import { prettyPrintTime } from "../../../libs/time";
 
 export default async function upload() {
 	slackApp.anyMessage(async ({ payload, context }) => {
@@ -20,9 +25,10 @@ export default async function upload() {
 			const userInDB = await db
 				.select()
 				.from(usersTable)
-				.where(eq(usersTable.id, user));
+				.where(eq(usersTable.id, user))
+				.then((users) => users[0] || null);
 
-			if (userInDB.length === 0) {
+			if (!userInDB) {
 				await slackClient.chat.postMessage({
 					channel: payload.channel,
 					thread_ts: payload.ts,
@@ -129,7 +135,13 @@ export default async function upload() {
 			}
 
 			// fetch time spent on project via hackatime
-			const timeSpentMs = 60000;
+			const timeSpent = await fetchHackatimeSummary(
+				user,
+				userInDB.hackatimeVersion as HackatimeVersion,
+				JSON.parse(userInDB.hackatimeKeys),
+				new Date(userInDB.lastTakeUploadDate),
+				new Date(),
+			).then((res) => res.total_categories_sum || 0);
 
 			await db.insert(takesTable).values({
 				id: Bun.randomUUIDv7(),
@@ -137,7 +149,7 @@ export default async function upload() {
 				ts: payload.ts,
 				notes: markdownText,
 				media: JSON.stringify(mediaUrls),
-				elapsedTime: timeSpentMs / 1000,
+				elapsedTime: timeSpent,
 			});
 
 			await slackClient.reactions.add({
@@ -155,7 +167,7 @@ export default async function upload() {
 						type: "section",
 						text: {
 							type: "mrkdwn",
-							text: `:inbox_tray: ${mediaUrls.length > 0 ? "uploaded media and " : ""}saved your notes!`,
+							text: `:inbox_tray: ${mediaUrls.length > 0 ? "uploaded media and " : ""}saved your notes! That's \`${prettyPrintTime(timeSpent * 1000)}\`!`,
 						},
 					},
 				],

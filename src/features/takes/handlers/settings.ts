@@ -20,14 +20,14 @@ export async function handleSettings(
 		project_description: string;
 		repo_link: string | undefined;
 		demo_link: string | undefined;
-		hackatime_version: string;
+		hackatime_version: HackatimeVersion;
 		hackatime_keys: string[];
 	} = {
 		project_name: "",
 		project_description: "",
 		repo_link: undefined,
 		demo_link: undefined,
-		hackatime_version: "v2",
+		hackatime_version: "v1",
 		hackatime_keys: [],
 	};
 
@@ -47,7 +47,8 @@ export async function handleSettings(
 					project_description: existingUser.projectDescription,
 					repo_link: existingUser.repoLink || undefined,
 					demo_link: existingUser.demoLink || undefined,
-					hackatime_version: existingUser.hackatimeVersion,
+					hackatime_version:
+						existingUser.hackatimeVersion as HackatimeVersion,
 					hackatime_keys: existingUser.hackatimeKeys
 						? JSON.parse(existingUser.hackatimeKeys)
 						: [],
@@ -82,7 +83,7 @@ export async function handleSettings(
 					element: {
 						type: "plain_text_input",
 						action_id: "project_name_input",
-						initial_value: initialValues.project_name || "",
+						initial_value: initialValues.project_name,
 						placeholder: {
 							type: "plain_text",
 							text: "Enter your project name",
@@ -100,7 +101,7 @@ export async function handleSettings(
 						type: "plain_text_input",
 						action_id: "project_description_input",
 						multiline: true,
-						initial_value: initialValues.project_description || "",
+						initial_value: initialValues.project_description,
 						placeholder: {
 							type: "plain_text",
 							text: "Describe your project",
@@ -131,7 +132,7 @@ export async function handleSettings(
 					element: {
 						type: "plain_text_input",
 						action_id: "repo_link_input",
-						initial_value: initialValues.repo_link || "",
+						initial_value: initialValues.repo_link,
 						placeholder: {
 							type: "plain_text",
 							text: "Optional: Add a link to your repository",
@@ -149,7 +150,7 @@ export async function handleSettings(
 					element: {
 						type: "plain_text_input",
 						action_id: "demo_link_input",
-						initial_value: initialValues.demo_link || "",
+						initial_value: initialValues.demo_link,
 						placeholder: {
 							type: "plain_text",
 							text: "Optional: Add a link to your demo",
@@ -170,7 +171,7 @@ export async function handleSettings(
 							text: {
 								type: "plain_text",
 								text: getHackatimeName(
-									initialValues.hackatime_version as HackatimeVersion,
+									initialValues.hackatime_version,
 								),
 							},
 							value: initialValues.hackatime_version,
@@ -178,7 +179,7 @@ export async function handleSettings(
 						options: Object.values(HACKATIME_VERSIONS).map((v) => ({
 							text: {
 								type: "plain_text",
-								text: getHackatimeName(v.id),
+								text: v.name,
 							},
 							value: v.id,
 						})),
@@ -194,15 +195,16 @@ export async function handleSettings(
 					element: {
 						type: "multi_static_select",
 						action_id: "project_keys_input",
-						initial_options: initialValues.hackatime_keys.map(
-							(key) => ({
-								text: {
-									type: "plain_text",
-									text: key,
-								},
-								value: key,
-							}),
-						),
+						initial_options:
+							initialValues.hackatime_keys.length === 0
+								? undefined
+								: initialValues.hackatime_keys.map((key) => ({
+										text: {
+											type: "plain_text",
+											text: key,
+										},
+										value: key,
+									})),
 						options: (
 							await fetchRecentProjectKeys(
 								user,
@@ -224,10 +226,10 @@ export async function handleSettings(
 }
 
 export async function setupSubmitListener() {
-	slackApp.view("takes_setup_submit", async ({ payload, body }) => {
+	slackApp.view("takes_setup_submit", async ({ payload, context }) => {
 		if (payload.type !== "view_submission") return;
 		const values = payload.view.state.values;
-		const userId = body.user.id;
+		const userId = payload.user.id;
 
 		const file = values.project_banner?.project_banner_input?.files?.[0]
 			?.url_private_download as string;
@@ -253,78 +255,31 @@ export async function setupSubmitListener() {
 				.insert(usersTable)
 				.values({
 					id: userId,
-					projectName: values.project_name?.project_name_input
-						?.value as string,
-					projectDescription: values.project_description
-						?.project_description_input?.value as string,
+					projectName: values.project_name?.project_name_input?.value,
+					projectDescription:
+						values.project_description?.project_description_input
+							?.value,
 					projectBannerUrl,
-					repoLink: values.repo_link?.repo_link_input?.value as
-						| string
-						| undefined,
-					demoLink: values.demo_link?.demo_link_input?.value as
-						| string
-						| undefined,
+					repoLink: values.repo_link?.repo_link_input?.value,
+					demoLink: values.demo_link?.demo_link_input?.value,
 					hackatimeVersion,
 					hackatimeKeys,
 				})
 				.onConflictDoUpdate({
 					target: usersTable.id,
 					set: {
-						projectName: values.project_name?.project_name_input
-							?.value as string,
-						projectDescription: values.project_description
-							?.project_description_input?.value as string,
+						projectName:
+							values.project_name?.project_name_input?.value,
+						projectDescription:
+							values.project_description
+								?.project_description_input?.value,
 						projectBannerUrl,
-						repoLink: values.repo_link?.repo_link_input?.value as
-							| string
-							| undefined,
-						demoLink: values.demo_link?.demo_link_input?.value as
-							| string
-							| undefined,
+						repoLink: values.repo_link?.repo_link_input?.value,
+						demoLink: values.demo_link?.demo_link_input?.value,
 						hackatimeVersion,
 						hackatimeKeys,
 					},
 				});
-
-			// Update the view to show the latest Hackatime project keys
-			await slackClient.views.update({
-				view_id: payload.view.id,
-				view: {
-					type: "modal",
-					title: {
-						type: "plain_text",
-						text: "Add your hackatime keys",
-					},
-					blocks: [
-						{
-							type: "section",
-							text: {
-								type: "mrkdwn",
-								text: ":white_check_mark: Your project has been updated successfully!",
-							},
-						},
-						{
-							type: "section",
-							text: {
-								type: "mrkdwn",
-								text: "*Hackatime Project Keys:*",
-							},
-						},
-						{
-							type: "section",
-							text: {
-								type: "mrkdwn",
-								text: Object.values(HACKATIME_VERSIONS)
-									.map(
-										(v) =>
-											`• *${getHackatimeName(v.id)}*: \`${v.id}\``,
-									)
-									.join("\n"),
-							},
-						},
-					],
-				},
-			});
 		} catch (error) {
 			console.error("Error processing file:", error);
 			throw error;
