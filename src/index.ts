@@ -1,7 +1,6 @@
 import { SlackApp } from "slack-edge";
 
 import { takes } from "./features/index";
-import frontend from "../public/index.html";
 
 import { t } from "./libs/template";
 import { blog } from "./libs/Logger";
@@ -55,19 +54,18 @@ const slackClient = slackApp.client;
 
 takes();
 
-Bun.serve({
+export default {
 	port: process.env.PORT || 3000,
 	development: environment === "dev",
-	routes: {
-		"/": frontend,
-		"/user/*": frontend,
-		"/health": new Response("OK"),
-	},
 	async fetch(request: Request) {
 		const url = new URL(request.url);
-		const path = `/${url.pathname.split("/")[1]}`;
+		const path = url.pathname;
 
 		switch (path) {
+			case "/":
+				return new Response(`Hello World from ${name}@${version}`);
+			case "/health":
+				return new Response("OK");
 			case "/slack":
 				return slackApp.run(request);
 			case "/api":
@@ -76,7 +74,7 @@ Bun.serve({
 				return new Response("404 Not Found", { status: 404 });
 		}
 	},
-});
+};
 
 console.log(
 	`🚀 Server Started in ${
