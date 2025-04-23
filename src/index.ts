@@ -59,7 +59,9 @@ export default {
 	development: environment === "dev",
 	async fetch(request: Request) {
 		const url = new URL(request.url);
-		const path = url.pathname;
+		const path = url.pathname.split("/").filter(Boolean)[0]
+			? `/${url.pathname.split("/").filter(Boolean)[0]}`
+			: "/";
 
 		switch (path) {
 			case "/":
