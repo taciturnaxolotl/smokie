@@ -2,12 +2,12 @@
 
 <img src="https://raw.githubusercontent.com/taciturnaxolotl/takes/main/.github/images/smokie.svg" height="175" align="right" alt="smokie the bear">
 
-> ### More deets coming soon 👀  
+> ### More deets coming soon 👀 🏔️ 📹  
 > A slack bot that tracks takes and accepts uploads; developed with 💖 @ [Hack Club](https://github.com/hackclub)  
 >  
 > ⚠️ **Highly opinionated slack bot warning** - Project rapidly iterating
 
-# 🚧 Dev
+## 🚧 Dev
 
 You can launch the bot locally with bun
 
@@ -37,6 +37,45 @@ API_URL="https://casual-renewing-reptile.ngrok-free.app"
 SENTRY_DSN="https://xxxxxx@xxxxxx.ingest.us.sentry.io/xxxx"
 DATABASE_URL="postgres://username:password@host:5432/smokie"
 CDN_TOKEN="cdn_token"
+```
+
+## 🔌 API Docs
+
+all endpoints are prefixed with `/api` and return JSON unless specified otherwise
+
+```
+GET /api/video?media=<url>
+```
+returns an HTML page with a video player for the given media URL
+
+```
+GET /api/recentTakes?user=<userId>
+```
+returns recent takes, optionally filtered by user ID
+- if user not found, returns `404` with an empty takes array
+- returns up to 40 takes ordered by creation date (newest first)
+- includes project info and total time stats
+
+```
+GET /api/projects?user=<userId>
+```
+returns project info
+- with user param: returns a single project for that user
+- without user param: returns all projects
+- returns empty array if no projects found
+
+typical take object looks like:
+```ts
+{
+  id: string;
+  userId: string;
+  notes: string;
+  createdAt: Date;
+  mediaUrls: string[];
+  elapsedTime: number; // seconds
+  project: string;
+  totalTakesTime: number; // seconds
+}
 ```
 
 ## 📜 License
