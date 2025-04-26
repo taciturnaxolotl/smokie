@@ -59,6 +59,12 @@ export async function handleSettings(
 		}
 	}
 
+	const hackatimeKeys = await fetchRecentProjectKeys(
+		user,
+		10,
+		initialValues.hackatime_version as HackatimeVersion,
+	);
+
 	await slackClient.views.open({
 		trigger_id: triggerID,
 		view: {
@@ -185,41 +191,45 @@ export async function handleSettings(
 						})),
 					},
 				},
-				{
-					type: "input",
-					block_id: "project_keys",
-					label: {
-						type: "plain_text",
-						text: "Project Keys",
-					},
-					element: {
-						type: "multi_static_select",
-						action_id: "project_keys_input",
-						initial_options:
-							initialValues.hackatime_keys.length === 0
-								? undefined
-								: initialValues.hackatime_keys.map((key) => ({
-										text: {
-											type: "plain_text",
-											text: key,
-										},
-										value: key,
-									})),
-						options: (
-							await fetchRecentProjectKeys(
-								user,
-								10,
-								initialValues.hackatime_version as HackatimeVersion,
-							)
-						).map((key) => ({
-							text: {
+				hackatimeKeys.length > 0
+					? {
+							type: "input",
+							block_id: "project_keys",
+							label: {
 								type: "plain_text",
-								text: key,
+								text: "Project Keys",
 							},
-							value: key,
-						})),
-					},
-				},
+							element: {
+								type: "multi_static_select",
+								action_id: "project_keys_input",
+								initial_options:
+									initialValues.hackatime_keys.length === 0
+										? undefined
+										: initialValues.hackatime_keys.map(
+												(key) => ({
+													text: {
+														type: "plain_text",
+														text: key,
+													},
+													value: key,
+												}),
+											),
+								options: hackatimeKeys.map((key) => ({
+									text: {
+										type: "plain_text",
+										text: key,
+									},
+									value: key,
+								})),
+							},
+						}
+					: {
+							type: "section",
+							text: {
+								text: "You don't have any hackatime projects. Go setup hackatime with `/hackatime`",
+								type: "mrkdwn",
+							},
+						},
 			],
 		},
 	});

@@ -124,6 +124,19 @@ export async function fetchHackatimeSummary(
 	});
 
 	if (!response.ok) {
+		if (response.status === 401) {
+			// Return blank info for 401 Unauthorized errors
+			return {
+				categories: [],
+				projects: [],
+				languages: [],
+				editors: [],
+				operating_systems: [],
+				total_categories_sum: 0,
+				total_categories_human_readable: "0h 0m 0s",
+				projectsKeys: [],
+			};
+		}
 		throw new Error(
 			`Failed to fetch Hackatime summary: ${response.status} ${response.statusText}: ${await response.text()}`,
 		);
