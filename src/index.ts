@@ -63,18 +63,50 @@ export default {
 			? `/${url.pathname.split("/").filter(Boolean)[0]}`
 			: "/";
 
+		// CORS headers to allow all origins
+		const corsHeaders = {
+			"Access-Control-Allow-Origin": "*",
+			"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+			"Access-Control-Allow-Headers": "Content-Type, Authorization",
+		};
+
+		// Handle preflight OPTIONS request
+		if (request.method === "OPTIONS") {
+			return new Response(null, {
+				status: 204,
+				headers: corsHeaders,
+			});
+		}
+
+		let response: Response;
 		switch (path) {
 			case "/":
-				return new Response(`Hello World from ${name}@${version}`);
+				response = new Response(`Hello World from ${name}@${version}`);
+				break;
 			case "/health":
-				return new Response("OK");
+				response = new Response("OK");
+				break;
 			case "/slack":
-				return slackApp.run(request);
+				response = await slackApp.run(request);
+				break;
 			case "/api":
-				return apiRouter(url);
+				response = await apiRouter(url);
+				break;
 			default:
-				return new Response("404 Not Found", { status: 404 });
+				response = new Response("404 Not Found", { status: 404 });
 		}
+
+		// Add CORS headers to all responses
+		const newHeaders = new Headers(response.headers);
+		for (const [key, value] of Object.entries(corsHeaders)) {
+			newHeaders.set(key, value);
+		}
+
+		return new Response(response.body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: newHeaders,
+		});
 	},
 };
 
