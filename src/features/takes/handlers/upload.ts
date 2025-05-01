@@ -8,6 +8,7 @@ import {
 	type HackatimeVersion,
 } from "../../../libs/hackatime";
 import { prettyPrintTime } from "../../../libs/time";
+import { deployToHackClubCDN } from "../../../libs/cdn";
 
 export default async function upload() {
 	slackApp.anyMessage(async ({ payload, context }) => {
@@ -102,37 +103,11 @@ export default async function upload() {
 				.replace(/~(.*?)~/g, "~~$1~~") // Strikethrough
 				.replace(/<(https?:\/\/[^|]+)\|([^>]+)>/g, "[$2]($1)"); // Links
 
-			const mediaUrls = [];
-
-			if (payload.files && payload.files.length > 0) {
-				for (const file of payload.files) {
-					if (
-						file.mimetype &&
-						(file.mimetype.startsWith("image/") ||
-							file.mimetype.startsWith("video/"))
-					) {
-						const fileres = await slackClient.files.sharedPublicURL(
-							{
-								file: file.id as string,
-								token: process.env.SLACK_USER_TOKEN,
-							},
-						);
-
-						const fetchRes = await fetch(
-							fileres.file?.permalink_public as string,
-						);
-						const html = await fetchRes.text();
-						const match = html.match(
-							/https:\/\/files.slack.com\/files-pri\/[^"]+pub_secret=([^"&]*)/,
-						);
-						const filePublicUrl = match?.[0];
-
-						if (filePublicUrl) {
-							mediaUrls.push(filePublicUrl);
-						}
-					}
-				}
-			}
+			const mediaUrls = payload.files?.length
+				? await deployToHackClubCDN(
+						payload.files.map((file) => file.url_private),
+					).then((res) => res.files)
+				: [];
 
 			// fetch time spent on project via hackatime
 			const timeSpent = await fetchHackatimeSummary(
