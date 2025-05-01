@@ -69,6 +69,13 @@ export default async function upload() {
 				return;
 			}
 
+			// Add initial 'loading' reaction to indicate processing
+			await slackClient.reactions.add({
+				channel: payload.channel,
+				timestamp: payload.ts,
+				name: "spin-loading",
+			});
+
 			// Convert Slack formatting to markdown
 			const replaceUserMentions = async (text: string) => {
 				const regex = /<@([A-Z0-9]+)>/g;
@@ -127,6 +134,12 @@ export default async function upload() {
 				elapsedTime: timeSpent,
 			});
 
+			await slackClient.reactions.remove({
+				channel: payload.channel,
+				timestamp: payload.ts,
+				name: "spin-loading",
+			});
+
 			await slackClient.reactions.add({
 				channel: payload.channel,
 				timestamp: payload.ts,
@@ -153,6 +166,24 @@ export default async function upload() {
 				channel: payload.channel,
 				thread_ts: payload.ts,
 				text: ":warning: there was an error processing your upload",
+			});
+
+			await slackClient.reactions.remove({
+				channel: payload.channel,
+				timestamp: payload.ts,
+				name: "fire",
+			});
+
+			await slackClient.reactions.remove({
+				channel: payload.channel,
+				timestamp: payload.ts,
+				name: "spin-loading",
+			});
+
+			await slackClient.reactions.add({
+				channel: payload.channel,
+				timestamp: payload.ts,
+				name: "nukeboom",
 			});
 
 			Sentry.captureException(error, {
