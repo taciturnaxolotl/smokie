@@ -76,6 +76,37 @@ export default async function upload() {
 				name: "spin-loading",
 			});
 
+			// fetch time spent on project via hackatime
+			const timeSpent = await fetchHackatimeSummary(
+				user,
+				userInDB.hackatimeVersion as HackatimeVersion,
+				JSON.parse(userInDB.hackatimeKeys),
+				new Date(userInDB.lastTakeUploadDate),
+				new Date(),
+			).then((res) => res.total_categories_sum || 0);
+
+			if (timeSpent < 360) {
+				await slackClient.chat.postMessage({
+					channel: payload.channel,
+					thread_ts: payload.ts,
+					text: "You haven't spent enough time on your project yet! Spend a few more minutes hacking then come back :)",
+				});
+
+				await slackClient.reactions.remove({
+					channel: payload.channel,
+					timestamp: payload.ts,
+					name: "spin-loading",
+				});
+
+				await slackClient.reactions.add({
+					channel: payload.channel,
+					timestamp: payload.ts,
+					name: "tw_timer_clock",
+				});
+
+				return;
+			}
+
 			// Convert Slack formatting to markdown
 			const replaceUserMentions = async (text: string) => {
 				const regex = /<@([A-Z0-9]+)>/g;
@@ -166,15 +197,6 @@ export default async function upload() {
 					mediaUrls.push(...results.filter(Boolean));
 				}
 			}
-
-			// fetch time spent on project via hackatime
-			const timeSpent = await fetchHackatimeSummary(
-				user,
-				userInDB.hackatimeVersion as HackatimeVersion,
-				JSON.parse(userInDB.hackatimeKeys),
-				new Date(userInDB.lastTakeUploadDate),
-				new Date(),
-			).then((res) => res.total_categories_sum || 0);
 
 			await db.insert(takesTable).values({
 				id: Bun.randomUUIDv7(),
