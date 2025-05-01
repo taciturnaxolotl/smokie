@@ -110,11 +110,62 @@ export default async function upload() {
 				.replace(/~(.*?)~/g, "~~$1~~") // Strikethrough
 				.replace(/<(https?:\/\/[^|]+)\|([^>]+)>/g, "[$2]($1)"); // Links
 
-			const mediaUrls = payload.files?.length
-				? await deployToHackClubCDN(
+			const mediaUrls = [];
+			// Check if the message is from a private channel
+			if (
+				payload.channel_type === "im" ||
+				payload.channel_type === "mpim"
+			) {
+				// Process all files in one batch for private channels
+				if (payload.files && payload.files.length > 0) {
+					const cdnUrls = await deployToHackClubCDN(
 						payload.files.map((file) => file.url_private),
-					).then((res) => res.files)
-				: [];
+					);
+					mediaUrls.push(...cdnUrls.files);
+				}
+			} else if (payload.files && payload.files.length > 0) {
+				// For public channels, process media files in parallel
+				const mediaFiles = payload.files.filter(
+					(file) =>
+						file.mimetype &&
+						(file.mimetype.startsWith("image/") ||
+							file.mimetype.startsWith("video/")),
+				);
+
+				if (mediaFiles.length > 0) {
+					const results = await Promise.all(
+						mediaFiles.map(async (file) => {
+							try {
+								const fileres =
+									await slackClient.files.sharedPublicURL({
+										file: file.id as string,
+										token: process.env.SLACK_USER_TOKEN,
+									});
+
+								const fetchRes = await fetch(
+									fileres.file?.permalink_public as string,
+								);
+								const html = await fetchRes.text();
+								const match = html.match(
+									/https:\/\/files.slack.com\/files-pri\/[^"]+pub_secret=([^"&]*)/,
+								);
+
+								return match?.[0] || null;
+							} catch (error) {
+								console.error(
+									"Error processing file:",
+									file.id,
+									error,
+								);
+								return null;
+							}
+						}),
+					);
+
+					// Filter out null results and add to mediaUrls
+					mediaUrls.push(...results.filter(Boolean));
+				}
+			}
 
 			// fetch time spent on project via hackatime
 			const timeSpent = await fetchHackatimeSummary(
