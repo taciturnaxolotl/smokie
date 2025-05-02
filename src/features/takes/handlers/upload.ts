@@ -83,7 +83,7 @@ export default async function upload() {
 				JSON.parse(userInDB.hackatimeKeys),
 				new Date(userInDB.lastTakeUploadDate),
 				new Date(),
-			).then((res) => res.total_categories_sum || 0);
+			).then((res) => res.total_projects_sum || 0);
 
 			if (timeSpent < 360) {
 				await slackClient.chat.postMessage({

@@ -9,8 +9,8 @@ export const HACKATIME_VERSIONS = {
 	},
 	v2: {
 		id: "v2",
-		name: "Hackatime V2 (broken don't use)",
-		apiUrl: "https://waka.hackclub.com/api",
+		name: "Hackatime V2",
+		apiUrl: "https://hackatime.hackclub.com/api",
 	},
 } as const;
 
@@ -84,8 +84,8 @@ export interface HackatimeSummaryResponse {
 		end: string;
 		timezone: string;
 	};
-	total_categories_sum?: number;
-	total_categories_human_readable?: string;
+	total_projects_sum?: number;
+	total_projects_human_readable?: string;
 	projectsKeys?: string[];
 }
 
@@ -132,8 +132,8 @@ export async function fetchHackatimeSummary(
 				languages: [],
 				editors: [],
 				operating_systems: [],
-				total_categories_sum: 0,
-				total_categories_human_readable: "0h 0m 0s",
+				total_projects_sum: 0,
+				total_projects_human_readable: "0h 0m 0s",
 				projectsKeys: [],
 			};
 		}
@@ -145,14 +145,14 @@ export async function fetchHackatimeSummary(
 	const data = await response.json();
 
 	// Add derived properties similar to the shell command
-	const totalCategoriesSum =
-		data.categories?.reduce(
-			(sum: number, category: { total: number }) => sum + category.total,
+	const totalProjectsSum =
+		data.projects?.reduce(
+			(sum: number, project: { total: number }) => sum + project.total,
 			0,
 		) || 0;
-	const hours = Math.floor(totalCategoriesSum / 3600);
-	const minutes = Math.floor((totalCategoriesSum % 3600) / 60);
-	const seconds = totalCategoriesSum % 60;
+	const hours = Math.floor(totalProjectsSum / 3600);
+	const minutes = Math.floor((totalProjectsSum % 3600) / 60);
+	const seconds = totalProjectsSum % 60;
 
 	// Get all project keys from the data
 	const allProjectsKeys =
@@ -170,8 +170,8 @@ export async function fetchHackatimeSummary(
 
 	return {
 		...data,
-		total_categories_sum: totalCategoriesSum,
-		total_categories_human_readable: `${hours}h ${minutes}m ${seconds}s`,
+		total_projects_sum: totalProjectsSum,
+		total_projects_human_readable: `${hours}h ${minutes}m ${seconds}s`,
 		projectsKeys: projectsKeys,
 	};
 }
