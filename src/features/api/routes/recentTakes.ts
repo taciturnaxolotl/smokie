@@ -2,6 +2,7 @@ import { eq, desc, or } from "drizzle-orm";
 import { db } from "../../../libs/db";
 import { takes as takesTable, users as usersTable } from "../../../libs/schema";
 import { handleApiError } from "../../../libs/apiError";
+import { fetchUserData } from "../../../libs/cachet";
 
 export type RecentTake = {
 	id: string;
@@ -14,7 +15,57 @@ export type RecentTake = {
 	project: string;
 	/* total time in seconds */
 	totalTakesTime: number;
+	userName?: string; // Add userName field
 };
+
+// Cache for user data from cachet
+const userCache: Record<string, { name: string; timestamp: number }> = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// Track pending requests to avoid duplicate API calls
+const pendingRequests: Record<string, Promise<string>> = {};
+
+// Function to get user name from cache or fetch it
+async function getUserName(userId: string): Promise<string> {
+	const now = Date.now();
+
+	// Check if user data is in cache and still valid
+	if (userCache[userId] && now - userCache[userId].timestamp < CACHE_TTL) {
+		return userCache[userId].name;
+	}
+
+	// If there's already a pending request for this user, return that promise
+	// instead of creating a new request
+	if (pendingRequests[userId]) {
+		return pendingRequests[userId];
+	}
+
+	// Create a new promise for this user and store it
+	const fetchPromise = (async () => {
+		try {
+			const userData = await fetchUserData(userId);
+			const userName = userData?.displayName || "Unknown User";
+
+			userCache[userId] = {
+				name: userName,
+				timestamp: now,
+			};
+
+			return userName;
+		} catch (error) {
+			console.error("Error fetching user data:", error);
+			return "Unknown User";
+		} finally {
+			// Clean up the pending request when done
+			delete pendingRequests[userId];
+		}
+	})();
+
+	// Store the promise
+	pendingRequests[userId] = fetchPromise;
+
+	// Return the promise
+	return fetchPromise;
+}
 
 export async function recentTakes(url: URL): Promise<Response> {
 	try {
@@ -82,6 +133,16 @@ export async function recentTakes(url: URL): Promise<Response> {
 			{} as Record<string, (typeof users)[number]>,
 		);
 
+		// Fetch all user names from cache or API
+		const userNamesPromises = userIds.map((id) => getUserName(id));
+		const userNames = await Promise.all(userNamesPromises);
+
+		// Create a map of user names
+		const userNameMap: Record<string, string> = {};
+		userIds.forEach((id, index) => {
+			userNameMap[id] = userNames[index] || "unknown";
+		});
+
 		const takes: RecentTake[] =
 			recentTakes.map((take) => ({
 				id: take.id,
@@ -93,6 +154,7 @@ export async function recentTakes(url: URL): Promise<Response> {
 				project: userMap[take.userId]?.projectName || "unknown project",
 				totalTakesTime:
 					userMap[take.userId]?.totalTakesTime || take.elapsedTime,
+				userName: userNameMap[take.userId] || "Unknown User",
 			})) || [];
 
 		return new Response(
