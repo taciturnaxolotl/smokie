@@ -14,7 +14,7 @@ export default async function handleHome(
 			.where(eq(usersTable.id, userId))
 	)[0];
 
-	const takeTime = prettyPrintTime(userFromDB?.totalTakesTime || 0);
+	const takeTime = prettyPrintTime((userFromDB?.totalTakesTime ?? 0) * 1000);
 
 	return {
 		text: `You have logged ${takeTime} of takes!`,
@@ -31,7 +31,7 @@ export default async function handleHome(
 				type: "section",
 				text: {
 					type: "mrkdwn",
-					text: `You have logged ${takeTime} of takes!`,
+					text: `You have logged \`${takeTime}\` of takes!`,
 				},
 			},
 			{
