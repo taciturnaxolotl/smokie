@@ -1,8 +1,8 @@
-import { eq, desc, or } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "../../../libs/db";
 import { takes as takesTable, users as usersTable } from "../../../libs/schema";
 import { handleApiError } from "../../../libs/apiError";
-import { fetchUserData } from "../../../libs/cachet";
+import { userService } from "../../../libs/cachet";
 
 export type RecentTake = {
 	id: string;
@@ -18,58 +18,29 @@ export type RecentTake = {
 	userName?: string; // Add userName field
 };
 
-// Cache for user data from cachet
-const userCache: Record<string, { name: string; timestamp: number }> = {};
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-// Track pending requests to avoid duplicate API calls
-const pendingRequests: Record<string, Promise<string>> = {};
-
-// Function to get user name from cache or fetch it
-async function getUserName(userId: string): Promise<string> {
-	const now = Date.now();
-
-	// Check if user data is in cache and still valid
-	if (userCache[userId] && now - userCache[userId].timestamp < CACHE_TTL) {
-		return userCache[userId].name;
-	}
-
-	// If there's already a pending request for this user, return that promise
-	// instead of creating a new request
-	if (pendingRequests[userId]) {
-		return pendingRequests[userId];
-	}
-
-	// Create a new promise for this user and store it
-	const fetchPromise = (async () => {
-		try {
-			const userData = await fetchUserData(userId);
-			const userName = userData?.displayName || "Unknown User";
-
-			userCache[userId] = {
-				name: userName,
-				timestamp: now,
-			};
-
-			return userName;
-		} catch (error) {
-			console.error("Error fetching user data:", error);
-			return "Unknown User";
-		} finally {
-			// Clean up the pending request when done
-			delete pendingRequests[userId];
-		}
-	})();
-
-	// Store the promise
-	pendingRequests[userId] = fetchPromise;
-
-	// Return the promise
-	return fetchPromise;
-}
+// Recent takes cache to reduce database queries
+const takesCache = new Map<string, { data: RecentTake[]; timestamp: number }>();
+const TAKES_CACHE_TTL = 30 * 1000; // 30 seconds cache TTL - shorter since takes change frequently
 
 export async function recentTakes(url: URL): Promise<Response> {
 	try {
 		const userId = url.searchParams.get("user");
+
+		// Check cache before querying database
+		const cacheKey = userId || "all_takes";
+		const cached = takesCache.get(cacheKey);
+		if (cached && Date.now() - cached.timestamp < TAKES_CACHE_TTL) {
+			return new Response(
+				JSON.stringify({
+					takes: cached.data,
+				}),
+				{
+					headers: {
+						"Content-Type": "application/json",
+					},
+				},
+			);
+		}
 
 		if (userId) {
 			// Verify user exists if userId provided
@@ -95,14 +66,29 @@ export async function recentTakes(url: URL): Promise<Response> {
 			}
 		}
 
-		const recentTakes = await db
-			.select()
+		// Use a JOIN query to get takes and user data in a single operation
+		const takesWithUserData = await db
+			.select({
+				take: {
+					id: takesTable.id,
+					userId: takesTable.userId,
+					notes: takesTable.notes,
+					createdAt: takesTable.createdAt,
+					media: takesTable.media,
+					elapsedTime: takesTable.elapsedTime,
+				},
+				user: {
+					projectName: usersTable.projectName,
+					totalTakesTime: usersTable.totalTakesTime,
+				},
+			})
 			.from(takesTable)
+			.leftJoin(usersTable, eq(takesTable.userId, usersTable.id))
+			.where(userId ? eq(takesTable.userId, userId) : undefined)
 			.orderBy(desc(takesTable.createdAt))
-			.where(eq(takesTable.userId, userId ? userId : takesTable.userId))
 			.limit(40);
 
-		if (recentTakes.length === 0) {
+		if (takesWithUserData.length === 0) {
 			return new Response(
 				JSON.stringify({
 					takes: [],
@@ -116,25 +102,14 @@ export async function recentTakes(url: URL): Promise<Response> {
 		}
 
 		// Get unique user IDs
-		const userIds = [...new Set(recentTakes.map((take) => take.userId))];
+		const userIds = [
+			...new Set(takesWithUserData.map((item) => item.take.userId)),
+		];
 
-		// Query users from takes table
-		const users = await db
-			.select()
-			.from(usersTable)
-			.where(or(...userIds.map((id) => eq(usersTable.id, id))));
-
-		// Create map of user data by ID
-		const userMap = users.reduce(
-			(acc, user) => {
-				acc[user.id] = user;
-				return acc;
-			},
-			{} as Record<string, (typeof users)[number]>,
+		// Fetch all user names from shared user service
+		const userNamesPromises = userIds.map((id) =>
+			userService.getUserName(id),
 		);
-
-		// Fetch all user names from cache or API
-		const userNamesPromises = userIds.map((id) => getUserName(id));
 		const userNames = await Promise.all(userNamesPromises);
 
 		// Create a map of user names
@@ -143,19 +118,24 @@ export async function recentTakes(url: URL): Promise<Response> {
 			userNameMap[id] = userNames[index] || "unknown";
 		});
 
-		const takes: RecentTake[] =
-			recentTakes.map((take) => ({
-				id: take.id,
-				userId: take.userId,
-				notes: take.notes,
-				createdAt: new Date(take.createdAt),
-				mediaUrls: take.media ? JSON.parse(take.media) : [],
-				elapsedTime: take.elapsedTime,
-				project: userMap[take.userId]?.projectName || "unknown project",
-				totalTakesTime:
-					userMap[take.userId]?.totalTakesTime || take.elapsedTime,
-				userName: userNameMap[take.userId] || "Unknown User",
-			})) || [];
+		// Map the joined results to the expected format
+		const takes: RecentTake[] = takesWithUserData.map((item) => ({
+			id: item.take.id,
+			userId: item.take.userId,
+			notes: item.take.notes,
+			createdAt: new Date(item.take.createdAt),
+			mediaUrls: item.take.media ? JSON.parse(item.take.media) : [],
+			elapsedTime: item.take.elapsedTime,
+			project: item.user?.projectName || "unknown project",
+			totalTakesTime: item.user?.totalTakesTime || item.take.elapsedTime,
+			userName: userNameMap[item.take.userId] || "Unknown User",
+		}));
+
+		// Store results in cache
+		takesCache.set(cacheKey, {
+			data: takes,
+			timestamp: Date.now(),
+		});
 
 		return new Response(
 			JSON.stringify({
