@@ -130,7 +130,7 @@ export async function handleSettings(
 				{
 					type: "input",
 					block_id: "repo_link",
-					optional: true,
+					optional: false,
 					label: {
 						type: "plain_text",
 						text: "Repository Link",
@@ -141,7 +141,7 @@ export async function handleSettings(
 						initial_value: initialValues.repo_link,
 						placeholder: {
 							type: "plain_text",
-							text: "Optional: Add a link to your repository",
+							text: "Add a link to your repository",
 						},
 					},
 				},
