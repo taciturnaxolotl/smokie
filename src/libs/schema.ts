@@ -26,7 +26,11 @@ export const users = pgTable("users", {
 	hackatimeKeys: text("hackatime_keys").notNull().default("[]"),
 	projectName: text("project_name").notNull().default(""),
 	projectDescription: text("project_description").notNull().default(""),
-	projectBannerUrl: text("project_banner_url").notNull().default(""),
+	projectBannerUrl: text("project_banner_url")
+		.notNull()
+		.default(
+			"https://cdn.hackclubber.dev/slackcdn/6112834c647de7587680cc62fefa51e7.png",
+		),
 	hackatimeVersion: text("hackatime_version").notNull().default("v1"),
 	lastTakeUploadDate: text("last_take_upload_date")
 		.notNull()

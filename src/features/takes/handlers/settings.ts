@@ -125,7 +125,7 @@ export async function handleSettings(
 						type: "file_input",
 						action_id: "project_banner_input",
 					},
-					optional: prefill,
+					optional: true,
 				},
 				{
 					type: "input",
