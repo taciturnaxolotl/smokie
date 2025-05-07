@@ -55,6 +55,7 @@ returns recent takes, optionally filtered by user ID
 - if user not found, returns `404` with an empty takes array
 - returns up to 40 takes ordered by creation date (newest first)
 - includes project info and total time stats
+- includes userName for each take
 
 ```
 GET /api/projects?user=<userId>
@@ -63,6 +64,15 @@ returns project info
 - with user param: returns a single project for that user
 - without user param: returns all projects
 - returns empty array if no projects found
+- includes userName for each project
+
+```
+GET /api/time?userId=<userId>
+```
+returns the total time spent on takes for a user
+- requires userId parameter
+- returns 400 if userId is missing
+- returns 404 if user not found
 
 typical take object looks like:
 ```ts
@@ -75,6 +85,20 @@ typical take object looks like:
   elapsedTime: number; // seconds
   project: string;
   totalTakesTime: number; // seconds
+  userName: string;
+}
+```
+
+typical project object looks like:
+```ts
+{
+  projectName: string;
+  projectDescription: string;
+  projectBannerUrl: string;
+  totalTakesTime: number; // seconds
+  userId: string;
+  userName: string;
+  takesCount: number;
 }
 ```
 
