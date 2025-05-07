@@ -67,7 +67,7 @@ returns project info
 - includes userName for each project
 
 ```
-GET /api/time?userId=<userId>
+GET /api/time?user=<userId>
 ```
 returns the total time spent on takes for a user and daily time statistics
 - requires userId parameter

@@ -19,7 +19,7 @@ const TIME_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
 
 export async function time(url: URL): Promise<Response> {
 	try {
-		const userId = url.searchParams.get("userId");
+		const userId = url.searchParams.get("user");
 
 		if (!userId) {
 			return new Response(
