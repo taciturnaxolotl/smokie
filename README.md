@@ -69,10 +69,11 @@ returns project info
 ```
 GET /api/time?userId=<userId>
 ```
-returns the total time spent on takes for a user
+returns the total time spent on takes for a user and daily time statistics
 - requires userId parameter
 - returns 400 if userId is missing
 - returns 404 if user not found
+- includes totalTakesTime (in seconds) and dailyStats showing time logged per day
 
 typical take object looks like:
 ```ts
