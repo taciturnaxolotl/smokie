@@ -105,7 +105,7 @@ typical project object looks like:
 
 ## 📜 License
 
-The code is licensed under `AGPL 3.0`! That means AGPL 3.0 requires publishing source code changes when the software is used over a network, guaranteeing that users can access the code. All artwork and images are copyright reserved but may be used with proper attribution to the authors.
+The code is licensed under `MIT`! That means MIT allows for free use, modification, and distribution of the software, requiring only that the original copyright notice and disclaimer are included in copies. All artwork and images are copyright reserved but may be used with proper attribution to the authors.
 
 <p align="center">
 	<img src="https://raw.githubusercontent.com/taciturnaxolotl/carriage/master/.github/images/line-break.svg" />
