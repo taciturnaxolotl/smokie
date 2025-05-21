@@ -145,7 +145,8 @@ export default async function upload() {
 			// Check if the message is from a private channel
 			if (
 				payload.channel_type === "im" ||
-				payload.channel_type === "mpim"
+				payload.channel_type === "mpim" ||
+				payload.channel_type === "group"
 			) {
 				// Process all files in one batch for private channels
 				if (payload.files && payload.files.length > 0) {
