@@ -14,6 +14,8 @@ export type Project = {
 	userName?: string;
 	/** Total number of takes */
 	takesCount: number;
+	lastUpdated: Date;
+	createdAt: Date;
 };
 
 // Project cache to reduce database queries
@@ -50,6 +52,8 @@ export async function projects(url: URL): Promise<Response> {
 			totalTakesTime: number;
 			userId: string;
 			takesCount: number;
+			lastUpdated: string;
+			createdAt: string;
 		}[];
 
 		if (user) {
@@ -62,6 +66,8 @@ export async function projects(url: URL): Promise<Response> {
 					totalTakesTime: usersTable.totalTakesTime,
 					userId: usersTable.id,
 					takesCount: count(takesTable.id).as("takes_count"),
+					lastUpdated: usersTable.lastTakeUploadDate,
+					createdAt: usersTable.createdAt,
 				})
 				.from(usersTable)
 				.leftJoin(takesTable, eq(usersTable.id, takesTable.userId))
@@ -77,6 +83,8 @@ export async function projects(url: URL): Promise<Response> {
 					totalTakesTime: usersTable.totalTakesTime,
 					userId: usersTable.id,
 					takesCount: count(takesTable.id).as("takes_count"),
+					lastUpdated: usersTable.lastTakeUploadDate,
+					createdAt: usersTable.createdAt,
 				})
 				.from(usersTable)
 				.leftJoin(takesTable, eq(usersTable.id, takesTable.userId))
@@ -113,11 +121,13 @@ export async function projects(url: URL): Promise<Response> {
 			userNameMap[id] = userNames[index] || "Unknown User";
 		});
 
-		// Add user names to projects
+		// Add user names to projects and convert lastUpdated to number
 		const projectsWithUserNames = projectsWithCounts.map((project) => ({
 			...project,
 			userName: userNameMap[project.userId] || "Unknown User",
-		}));
+			lastUpdated: new Date(project.lastUpdated),
+			createdAt: new Date(project.createdAt),
+		})) as Project[];
 
 		// Store in cache
 		const result = user ? projectsWithUserNames[0] : projectsWithUserNames;

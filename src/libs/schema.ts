@@ -33,6 +33,9 @@ export const users = pgTable("users", {
 		.default(TakesConfig.START_DATE.toISOString()),
 	repoLink: text("repo_link"),
 	demoLink: text("demo_link"),
+	createdAt: text("created_at")
+		.$defaultFn(() => new Date().toISOString())
+		.notNull(),
 });
 
 export async function setupTriggers(pool: Pool) {
