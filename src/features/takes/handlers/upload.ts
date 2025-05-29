@@ -153,7 +153,9 @@ export default async function upload() {
 					const cdnUrls = await deployToHackClubCDN(
 						payload.files.map((file) => file.url_private),
 					);
-					mediaUrls.push(...cdnUrls.files);
+					mediaUrls.push(
+						...cdnUrls.files.map((file) => file.deployedUrl),
+					);
 				}
 			} else if (payload.files && payload.files.length > 0) {
 				// For public channels, process media files in parallel
