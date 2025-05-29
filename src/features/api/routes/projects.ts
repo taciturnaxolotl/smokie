@@ -7,6 +7,14 @@ import { userService } from "../../../libs/cachet";
 export type Project = {
 	projectName: string;
 	projectDescription: string;
+	projectCategory:
+		| "hardware"
+		| "hardware_software"
+		| "website"
+		| "app"
+		| "game"
+		| "art_design"
+		| "other";
 	projectBannerUrl: string;
 	/** Total time spent on takes, in seconds */
 	totalTakesTime: number;
@@ -48,6 +56,7 @@ export async function projects(url: URL): Promise<Response> {
 		let projectsWithCounts: {
 			projectName: string;
 			projectDescription: string;
+			projectCategory: string;
 			projectBannerUrl: string;
 			totalTakesTime: number;
 			userId: string;
@@ -62,6 +71,7 @@ export async function projects(url: URL): Promise<Response> {
 				.select({
 					projectName: usersTable.projectName,
 					projectDescription: usersTable.projectDescription,
+					projectCategory: usersTable.projectCategory,
 					projectBannerUrl: usersTable.projectBannerUrl,
 					totalTakesTime: usersTable.totalTakesTime,
 					userId: usersTable.id,
@@ -79,6 +89,7 @@ export async function projects(url: URL): Promise<Response> {
 				.select({
 					projectName: usersTable.projectName,
 					projectDescription: usersTable.projectDescription,
+					projectCategory: usersTable.projectCategory,
 					projectBannerUrl: usersTable.projectBannerUrl,
 					totalTakesTime: usersTable.totalTakesTime,
 					userId: usersTable.id,

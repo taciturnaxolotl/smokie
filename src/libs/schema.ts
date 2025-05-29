@@ -25,6 +25,7 @@ export const users = pgTable("users", {
 	totalTakesTime: integer("total_takes_time").default(0).notNull(),
 	hackatimeKeys: text("hackatime_keys").notNull().default("[]"),
 	projectName: text("project_name").notNull().default(""),
+	projectCategory: text("project_category").notNull().default("other"),
 	projectDescription: text("project_description").notNull().default(""),
 	projectBannerUrl: text("project_banner_url").notNull().default(""),
 	hackatimeVersion: text("hackatime_version").notNull().default("v1"),

@@ -9,6 +9,8 @@ import {
 	type HackatimeVersion,
 } from "../../../libs/hackatime";
 import { deployToHackClubCDN } from "../../../libs/cdn";
+import { getCategoryLabel } from "../../../libs/categories";
+import type { Project } from "../../api/routes/projects";
 
 export async function handleSettings(
 	triggerID: string,
@@ -18,6 +20,7 @@ export async function handleSettings(
 	let initialValues: {
 		project_name: string;
 		project_description: string;
+		project_category: Project["projectCategory"];
 		repo_link: string | undefined;
 		demo_link: string | undefined;
 		hackatime_version: HackatimeVersion;
@@ -25,6 +28,7 @@ export async function handleSettings(
 	} = {
 		project_name: "",
 		project_description: "",
+		project_category: "other",
 		repo_link: undefined,
 		demo_link: undefined,
 		hackatime_version: "v1",
@@ -45,6 +49,19 @@ export async function handleSettings(
 				initialValues = {
 					project_name: existingUser.projectName,
 					project_description: existingUser.projectDescription,
+					project_category:
+						existingUser.projectCategory &&
+						[
+							"hardware",
+							"hardware_software",
+							"website",
+							"app",
+							"game",
+							"art_design",
+							"other",
+						].includes(existingUser.projectCategory)
+							? (existingUser.projectCategory as Project["projectCategory"])
+							: "other",
 					repo_link: existingUser.repoLink || undefined,
 					demo_link: existingUser.demoLink || undefined,
 					hackatime_version:
@@ -112,6 +129,84 @@ export async function handleSettings(
 							type: "plain_text",
 							text: "Describe your project",
 						},
+					},
+				},
+				{
+					type: "input",
+					block_id: "project_category",
+					label: {
+						type: "plain_text",
+						text: "Project Category",
+					},
+					element: {
+						type: "static_select",
+						action_id: "project_category_input",
+						initial_option: initialValues.project_category
+							? {
+									text: {
+										type: "plain_text",
+										text: getCategoryLabel(
+											initialValues.project_category,
+										),
+									},
+									value: initialValues.project_category,
+								}
+							: undefined,
+						placeholder: {
+							type: "plain_text",
+							text: "Select a project category",
+						},
+						options: [
+							{
+								text: {
+									type: "plain_text",
+									text: "Hardware",
+								},
+								value: "hardware",
+							},
+							{
+								text: {
+									type: "plain_text",
+									text: "Hardware + Software",
+								},
+								value: "hardware_software",
+							},
+							{
+								text: {
+									type: "plain_text",
+									text: "Website",
+								},
+								value: "website",
+							},
+							{
+								text: {
+									type: "plain_text",
+									text: "App",
+								},
+								value: "app",
+							},
+							{
+								text: {
+									type: "plain_text",
+									text: "Game",
+								},
+								value: "game",
+							},
+							{
+								text: {
+									type: "plain_text",
+									text: "Art & Design",
+								},
+								value: "art_design",
+							},
+							{
+								text: {
+									type: "plain_text",
+									text: "Other",
+								},
+								value: "other",
+							},
+						],
 					},
 				},
 				{
@@ -269,6 +364,9 @@ export async function setupSubmitListener() {
 					projectDescription:
 						values.project_description?.project_description_input
 							?.value,
+					projectCategory:
+						values.project_category?.project_category_input
+							?.selected_option?.value,
 					projectBannerUrl,
 					repoLink: values.repo_link?.repo_link_input?.value,
 					demoLink: values.demo_link?.demo_link_input?.value,
