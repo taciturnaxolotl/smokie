@@ -32,6 +32,7 @@ export const users = pgTable("users", {
 	lastTakeUploadDate: text("last_take_upload_date")
 		.notNull()
 		.default(TakesConfig.START_DATE.toISOString()),
+	isUploading: boolean("is_uploading").default(false).notNull(),
 	repoLink: text("repo_link"),
 	demoLink: text("demo_link"),
 	createdAt: text("created_at")

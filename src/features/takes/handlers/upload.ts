@@ -12,8 +12,9 @@ import { deployToHackClubCDN } from "../../../libs/cdn";
 
 export default async function upload() {
 	slackApp.anyMessage(async ({ payload, context }) => {
+		// Track user ID at the top level so it's available in catch block
+		const user = payload.user as string;
 		try {
-			const user = payload.user as string;
 
 			if (
 				payload.subtype === "bot_message" ||
@@ -68,6 +69,28 @@ export default async function upload() {
 				});
 				return;
 			}
+
+			// Check if the user is already uploading - prevent multiple simultaneous uploads
+			if (userInDB.isUploading) {
+				await slackClient.chat.postMessage({
+					channel: payload.channel,
+					thread_ts: payload.ts,
+					text: "You already have an upload in progress. Please wait for it to complete before sending another one.",
+				});
+				
+				await slackClient.reactions.add({
+					channel: payload.channel,
+					timestamp: payload.ts,
+					name: "hourglass_flowing_sand",
+				});
+				
+				return;
+			}
+
+			// Set the upload lock
+			await db.update(usersTable)
+				.set({ isUploading: true })
+				.where(eq(usersTable.id, user));
 
 			// Add initial 'loading' reaction to indicate processing
 			await slackClient.reactions.add({
@@ -236,6 +259,11 @@ export default async function upload() {
 					},
 				],
 			});
+			
+			// Release the upload lock after successful processing
+			await db.update(usersTable)
+				.set({ isUploading: false })
+				.where(eq(usersTable.id, user));
 		} catch (error) {
 			console.error("Error handling file message:", error);
 			await slackClient.chat.postMessage({
@@ -261,6 +289,15 @@ export default async function upload() {
 				timestamp: payload.ts,
 				name: "nukeboom",
 			});
+
+			// Release the upload lock in case of error
+			try {
+				await db.update(usersTable)
+					.set({ isUploading: false })
+					.where(eq(usersTable.id, user)); // Now user is in scope
+			} catch (lockError) {
+				console.error("Error releasing upload lock:", lockError);
+			}
 
 			Sentry.captureException(error, {
 				extra: {
