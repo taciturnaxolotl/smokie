@@ -29,11 +29,14 @@ if (missingVars.length > 0) {
 	);
 }
 
-Sentry.init({
-	dsn: process.env.SENTRY_DSN,
-	environment,
-	release: version,
-});
+if (process.env.NODE_ENV === "production") {
+	Sentry.init({
+		dsn: process.env.SENTRY_DSN,
+		environment,
+		release: version,
+		sampleRate: 0.1,
+	});
+}
 
 console.log(
 	`----------------------------------\n${name} Server\n----------------------------------\n`,
